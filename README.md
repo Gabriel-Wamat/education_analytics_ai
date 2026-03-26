@@ -1,4 +1,6 @@
-# Education Analytics AI
+# Education Analytics AI 
+
+### Trabalho da discíplina de mestrado: Agentes de IA
 
 Sistema web para montagem, geração, correção e análise de provas, com backend em Node.js/TypeScript e frontend em React/TypeScript.
 
