@@ -1,3 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 
-export const createPrismaClient = (): PrismaClient => new PrismaClient();
+import { ensureDatabaseUrl } from "./database-url";
+
+export const createPrismaClient = (): PrismaClient => {
+  ensureDatabaseUrl();
+  return new PrismaClient();
+};

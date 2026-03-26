@@ -3,14 +3,15 @@ import "dotenv/config";
 import { z } from "zod";
 
 import { createPrismaClient } from "../database/prisma/client";
+import { ensureDatabaseUrl } from "../database/prisma/database-url";
 import { createApp } from "./create-app";
 
 const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
-  DATABASE_URL: z.string().min(1),
   ARTIFACTS_OUTPUT_DIR: z.string().default("output/exam-batches")
 });
 
+ensureDatabaseUrl();
 const environment = environmentSchema.parse(process.env);
 
 const prismaClient = createPrismaClient();
