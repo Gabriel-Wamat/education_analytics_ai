@@ -5,7 +5,7 @@
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
   "functions": {
-    "api/[...path].ts": {
+    "api/**/*.ts": {
       "includeFiles": "prisma/**"
     }
   },
