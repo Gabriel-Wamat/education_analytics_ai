@@ -12,3 +12,6 @@ frontend/dist
 .env.test
 *.tsbuildinfo
 frontend/*.d.ts
+.vercel
+.env.vercel
+AGENTS.md
