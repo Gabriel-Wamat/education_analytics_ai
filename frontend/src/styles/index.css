@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-app: #f0f4f8;
+    --bg-surface: #ffffff;
+    --bg-surface-muted: #f8fafc;
+    --bg-elevated: #ffffff;
+    --text-primary: #334155;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-heading: #1e293b;
+    --border-soft: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --control-bg: #ffffff;
+    --control-bg-hover: #f8fafc;
+    --control-border: #cbd5e1;
+    --control-border-strong: #94a3b8;
+    --control-text: #334155;
+    --control-placeholder: #94a3b8;
+    --control-ring: rgba(0, 191, 255, 0.18);
+    --overlay-bg: rgba(15, 23, 42, 0.34);
+    --tooltip-bg: #111827;
+    --tooltip-text: #f8fafc;
+    --shadow-surface: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-elevated: 0 10px 24px rgba(15, 23, 42, 0.14);
+    --chart-primary: #102a43;
+    --chart-accent: #00bfff;
+    --chart-success: #38a169;
+    --chart-highlight: #f8bf24;
+    --chart-neutral: #94a3b8;
+    --chart-neutral-soft: #cbd5e1;
+    --chart-grid: #e2e8f0;
+    --chart-axis: #64748b;
+    --chart-tooltip-bg: #ffffff;
+    --chart-tooltip-border: #e2e8f0;
+    --chart-tooltip-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+    --app-bg: var(--bg-app);
+    --app-surface: var(--bg-surface);
+    --app-subtle: var(--bg-surface-muted);
+    --app-border: var(--border-soft);
+    --app-border-strong: var(--border-strong);
+    --app-text: var(--text-primary);
+    --app-text-muted: var(--text-muted);
+    --app-heading: var(--text-heading);
+  }
+
+  html {
+    font-family: theme("fontFamily.body");
+    color: var(--app-text);
+    background: var(--app-bg);
+  }
+
+  body {
+    min-height: 100vh;
+    background: var(--app-bg);
+    color: var(--app-text);
+    @apply antialiased;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: theme("fontFamily.heading");
+    color: var(--app-heading);
+  }
+}
+
+@layer components {
+  .surface {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: var(--bg-surface);
+    box-shadow: var(--shadow-surface);
+  }
+
+  .subtle-panel {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: var(--bg-surface-muted);
+  }
+
+  .surface-elevated {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: var(--bg-elevated);
+    box-shadow: var(--shadow-elevated);
+  }
+}

@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AlternativeIdentificationType {
+  LETTERS
+  POWERS_OF_2
+}
+
+enum GradingStrategyType {
+  STRICT
+  PROPORTIONAL
+}
+
+model Question {
+  id        String   @id @db.Uuid
+  topic     String
+  unit      Int
+  statement String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  options   Option[]
+
+  @@map("questions")
+}
+
+model Option {
+  id          String   @id @db.Uuid
+  description String
+  isCorrect   Boolean
+  questionId  String   @db.Uuid
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("options")
+}
+
+model ExamTemplate {
+  id                            String                        @id @db.Uuid
+  title                         String
+  alternativeIdentificationType AlternativeIdentificationType
+  questionsSnapshot             Json
+  createdAt                     DateTime                      @default(now())
+  updatedAt                     DateTime                      @updatedAt
+  examInstances                 ExamInstance[]
+  examReports                   ExamReport[]
+
+  @@map("exam_templates")
+}
+
+model ExamInstance {
+  id                            String                        @id @db.Uuid
+  batchId                       String
+  examCode                      String                        @unique
+  signature                     String
+  templateId                    String                        @db.Uuid
+  templateTitle                 String
+  alternativeIdentificationType AlternativeIdentificationType
+  randomizedQuestions           Json
+  createdAt                     DateTime                      @default(now())
+  updatedAt                     DateTime                      @updatedAt
+  examTemplate                  ExamTemplate                  @relation(fields: [templateId], references: [id])
+
+  @@index([batchId])
+  @@index([templateId])
+  @@unique([batchId, signature])
+  @@map("exam_instances")
+}
+
+model ExamReport {
+  id                  String              @id @db.Uuid
+  batchId             String
+  templateId          String              @db.Uuid
+  templateTitle       String
+  gradingStrategyType GradingStrategyType
+  studentsSnapshot    Json
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  examTemplate        ExamTemplate        @relation(fields: [templateId], references: [id])
+
+  @@index([batchId])
+  @@index([templateId])
+  @@map("exam_reports")
+}

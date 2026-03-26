@@ -1,0 +1,44 @@
+{
+  "name": "exam-management-backend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Backend para gerenciamento de questões e provas com Node.js, TypeScript, Prisma e Cucumber.",
+  "scripts": {
+    "dev": "dotenv -e .env -- tsx watch backend/src/infrastructure/http/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "dotenv -e .env -- node dist/infrastructure/http/server.js",
+    "seed:demo": "dotenv -e .env -- node --import tsx scripts/seed-demo-data.ts",
+    "prisma:generate": "dotenv -e .env -- prisma generate",
+    "prisma:migrate:dev": "dotenv -e .env -- prisma migrate dev",
+    "prisma:migrate:deploy": "dotenv -e .env -- prisma migrate deploy",
+    "test:routes": "dotenv -e .env.test -- node --import tsx --test tests/routes/*.test.ts",
+    "test:acceptance": "dotenv -e .env.test -- cucumber-js",
+    "benchmark:routes": "dotenv -e .env.test -- node --import tsx scripts/benchmark-routes.ts",
+    "postinstall": "npm run prisma:generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.5.0",
+    "@types/multer": "^2.1.0",
+    "@types/pdfkit": "^0.17.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "multer": "^2.1.1",
+    "openai": "^4.104.0",
+    "pdfkit": "^0.18.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.2.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.13",
+    "@types/pg": "^8.11.11",
+    "@types/supertest": "^6.0.3",
+    "dotenv-cli": "^8.0.0",
+    "pg": "^8.14.1",
+    "prisma": "^6.5.0",
+    "supertest": "^7.1.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
