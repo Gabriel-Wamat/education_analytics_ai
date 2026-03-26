@@ -5,6 +5,14 @@ import {
   GenerateExamInstancesResponse
 } from "@/types/api";
 
+const ensureExamTemplateArray = (payload: unknown): ExamTemplate[] => {
+  if (!Array.isArray(payload)) {
+    throw new Error("A API de provas retornou um formato inválido.");
+  }
+
+  return payload as ExamTemplate[];
+};
+
 export interface CreateExamTemplatePayload {
   title: string;
   questionIds: string[];
@@ -18,7 +26,7 @@ export interface GenerateExamArtifactsPayload {
 export const examTemplatesApi = {
   list: async (): Promise<ExamTemplate[]> => {
     const response = await httpClient.get<ExamTemplate[]>("/exam-templates");
-    return response.data;
+    return ensureExamTemplateArray(response.data);
   },
   create: async (payload: CreateExamTemplatePayload): Promise<ExamTemplate> => {
     const response = await httpClient.post<ExamTemplate>("/exam-templates", payload);
