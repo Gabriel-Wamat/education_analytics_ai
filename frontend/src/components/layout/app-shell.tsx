@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ClipboardList,
   FileCheck2,
   WandSparkles,
@@ -15,67 +12,42 @@ import { Topbar } from "@/components/layout/topbar";
 import { cn } from "@/lib/cn";
 
 type NavigationLinkItem = {
-  type: "link";
   to: string;
   label: string;
   description: string;
   icon: typeof ClipboardList;
 };
 
-type NavigationGroupItem = {
-  type: "group";
-  id: string;
-  label: string;
-  description: string;
-  icon: typeof FileCheck2;
-  children: NavigationLinkItem[];
-};
-
-type NavigationItem = NavigationLinkItem | NavigationGroupItem;
-
 const navigationSections: Array<{
   label: string;
-  items: NavigationItem[];
+  items: NavigationLinkItem[];
 }> = [
   {
     label: "Principal",
     items: [
       {
-        type: "link",
         to: "/questions",
         label: "Questões",
         description: "Banco e revisão",
         icon: ClipboardList
       },
       {
-        type: "link",
         to: "/exam-templates/new",
         label: "Nova prova",
         description: "Montagem guiada",
         icon: WandSparkles
       },
       {
-        type: "group",
-        id: "assessment",
-        label: "Avaliação",
-        description: "Correção e analytics",
+        to: "/grading",
+        label: "Correção",
+        description: "Notas e processamento",
         icon: FileCheck2,
-        children: [
-          {
-            type: "link",
-            to: "/grading",
-            label: "Correção",
-            description: "Notas e processamento",
-            icon: FileCheck2
-          },
-          {
-            type: "link",
-            to: "/dashboard",
-            label: "Dashboard",
-            description: "Métricas e insights",
-            icon: BarChart3
-          }
-        ]
+      },
+      {
+        to: "/dashboard",
+        label: "Dashboard",
+        description: "Métricas e insights",
+        icon: BarChart3
       }
     ]
   }
@@ -124,8 +96,6 @@ const routeMeta = [
   }
 ];
 
-const SIDEBAR_STORAGE_KEY = "sgp.sidebar-collapsed.v4";
-
 const isNavigationItemActive = (pathname: string, path: string) => {
   if (path === "/dashboard") {
     return Boolean(
@@ -137,9 +107,6 @@ const isNavigationItemActive = (pathname: string, path: string) => {
   return Boolean(matchPath({ path, end: true }, pathname));
 };
 
-const isGroupActive = (pathname: string, item: NavigationGroupItem) =>
-  item.children.some((child) => isNavigationItemActive(pathname, child.to));
-
 const SidebarSectionLabel = ({
   label,
   collapsed
@@ -150,7 +117,7 @@ const SidebarSectionLabel = ({
   collapsed ? (
     <div className="mx-auto h-px w-8 rounded-full bg-white/12" />
   ) : (
-    <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+    <div className="px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
       {label}
     </div>
   );
@@ -166,6 +133,14 @@ const labelVisibilityClass = (hidden: boolean) =>
     "min-w-0 overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
     hidden ? "max-w-0 -translate-x-2 opacity-0" : "max-w-[220px] translate-x-0 opacity-100"
   );
+
+const MinimalLogo = () => (
+  <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/12 bg-white/6">
+    <span className="absolute left-[13px] top-[11px] h-5 w-[3px] rounded-full bg-white" />
+    <span className="absolute left-[20px] top-[14px] h-4 w-[3px] rounded-full bg-white/80" />
+    <span className="absolute left-[27px] top-[9px] h-7 w-[3px] rounded-full bg-white/55" />
+  </div>
+);
 
 const SidebarLink = ({
   item,
@@ -187,17 +162,21 @@ const SidebarLink = ({
       onClick={onNavigate}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "group relative flex items-center gap-3 rounded-2xl border transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        collapsed ? "mx-auto h-11 w-11 justify-center px-0" : "h-14 px-3.5",
+        "group relative flex items-center gap-3 border transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        collapsed ? "mx-auto h-11 w-11 justify-center rounded-[18px] px-0" : "h-14 rounded-2xl px-3.5",
         isActive
-          ? "border-white/12 bg-white/10 text-white shadow-sm"
+          ? collapsed
+            ? "border-transparent bg-white/6 text-white"
+            : "border-white/12 bg-white/10 text-white shadow-sm"
           : "border-transparent text-slate-300 hover:bg-white/6 hover:text-white"
       )}
     >
       <span
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl transition-all duration-300",
-          isActive ? "bg-white text-primary-dark" : "bg-white/6 text-slate-300"
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-[16px] transition-all duration-300",
+          isActive
+            ? "bg-white text-primary-dark shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+            : "bg-white/6 text-slate-300"
         )}
       >
         <Icon className="h-4.5 w-4.5" />
@@ -212,249 +191,58 @@ const SidebarLink = ({
   );
 };
 
-const SidebarGroup = ({
-  item,
-  pathname,
-  collapsed,
-  expanded,
-  flyoutOpen,
-  onToggle,
-  onNavigate
-}: {
-  item: NavigationGroupItem;
-  pathname: string;
-  collapsed: boolean;
-  expanded: boolean;
-  flyoutOpen: boolean;
-  onToggle: () => void;
-  onNavigate?: () => void;
-}) => {
-  const Icon = item.icon;
-  const active = isGroupActive(pathname, item);
-
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        title={collapsed ? item.label : undefined}
-        className={cn(
-          "group relative flex w-full items-center gap-3 rounded-2xl border text-left transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          collapsed ? "mx-auto h-11 w-11 justify-center px-0" : "h-14 px-3.5",
-          active || expanded || flyoutOpen
-            ? "border-white/12 bg-white/10 text-white shadow-sm"
-            : "border-transparent text-slate-300 hover:bg-white/6 hover:text-white"
-        )}
-      >
-        <span
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl transition-all duration-300",
-            active || expanded || flyoutOpen ? "bg-white text-primary-dark" : "bg-white/6 text-slate-300"
-          )}
-        >
-          <Icon className="h-4.5 w-4.5" />
-        </span>
-
-        <span className={cn("flex-1", labelVisibilityClass(collapsed))}>
-          <span className="block truncate text-sm font-semibold leading-5">{item.label}</span>
-        </span>
-
-        {!collapsed ? (
-          <ChevronDown
-            className={cn("h-4 w-4 text-slate-400 transition-transform", expanded && "rotate-180")}
-          />
-        ) : null}
-
-        {collapsed ? <SidebarTooltip label={item.label} /> : null}
-      </button>
-
-      {!collapsed ? (
-        <div
-          className={cn(
-            "grid overflow-hidden transition-[grid-template-rows,opacity,margin] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-            expanded ? "mt-2 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
-          )}
-        >
-          <div className="min-h-0 overflow-hidden">
-            <div className="ml-6 border-l border-white/10 pl-4">
-              <div className="space-y-1.5 py-1">
-                {item.children.map((child) => {
-                  const childActive = isNavigationItemActive(pathname, child.to);
-
-                  return (
-                    <Link
-                      key={child.to}
-                      to={child.to}
-                      onClick={onNavigate}
-                      className={cn(
-                        "block rounded-xl px-3 py-2.5 text-sm transition",
-                        childActive
-                          ? "bg-white/10 font-semibold text-white"
-                          : "text-slate-400 hover:bg-white/6 hover:text-white"
-                      )}
-                    >
-                      {child.label}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {collapsed && flyoutOpen ? (
-        <div className="surface-elevated absolute left-[calc(100%+16px)] top-1/2 z-30 w-60 -translate-y-1/2 p-3">
-          <div className="mb-3 px-2">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-              {item.label}
-            </div>
-            <div className="mt-1 text-sm text-slate-600">{item.description}</div>
-          </div>
-          <div className="space-y-1">
-            {item.children.map((child) => {
-              const childActive = isNavigationItemActive(pathname, child.to);
-
-              return (
-                <Link
-                  key={child.to}
-                  to={child.to}
-                  onClick={onNavigate}
-                  className={cn(
-                    "block rounded-xl px-3 py-2.5 text-sm transition",
-                    childActive
-                      ? "bg-slate-100 font-semibold text-slate-800"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-800"
-                  )}
-                >
-                  {child.label}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
 const SidebarContent = ({
   pathname,
   collapsed,
-  onToggleCollapse,
   mobile,
   onNavigate
 }: {
   pathname: string;
   collapsed: boolean;
-  onToggleCollapse?: () => void;
   mobile?: boolean;
   onNavigate?: () => void;
 }) => {
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    assessment: isNavigationItemActive(pathname, "/grading") || isNavigationItemActive(pathname, "/dashboard")
-  });
-  const [flyoutGroupId, setFlyoutGroupId] = useState<string | null>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (isNavigationItemActive(pathname, "/grading") || isNavigationItemActive(pathname, "/dashboard")) {
-      setExpandedGroups((current) => ({ ...current, assessment: true }));
-    }
-    setFlyoutGroupId(null);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!collapsed || !flyoutGroupId) {
-      return undefined;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) {
-        setFlyoutGroupId(null);
-      }
-    };
-
-    window.addEventListener("mousedown", handlePointerDown);
-    return () => window.removeEventListener("mousedown", handlePointerDown);
-  }, [collapsed, flyoutGroupId]);
-
   return (
     <div
-      ref={containerRef}
       className={cn(
-        "relative flex h-full flex-col overflow-hidden rounded-[32px] border border-mid-blue/70 bg-primary-dark text-white shadow-[0_18px_42px_rgba(15,23,42,0.18)] transition-[padding,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "relative flex h-full flex-col overflow-hidden rounded-[20px] border border-mid-blue/70 bg-primary-dark text-white shadow-[0_18px_42px_rgba(15,23,42,0.18)] transition-[padding,box-shadow] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
         mobile ? "w-full max-w-[320px] px-4 py-4" : collapsed ? "px-3 py-4" : "px-4 py-4.5"
       )}
     >
-      {!mobile && onToggleCollapse ? (
-        <button
-          type="button"
-          onClick={onToggleCollapse}
-          aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-          className="absolute -right-5 top-6 z-10 flex h-12 w-12 items-center justify-center rounded-2xl border border-mid-blue/70 bg-primary-dark text-white shadow-sm transition-[transform,background-color] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:scale-[1.02] hover:bg-mid-blue"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-      ) : null}
-
-      <div className={cn("pb-4", collapsed && !mobile ? "px-0 pt-1" : "px-1.5 pt-1.5")}>
+      <div className={cn("pb-5", collapsed && !mobile ? "px-0 pt-3" : "px-1.5 pt-3")}>
         <div
           className={cn(
-            "flex items-center gap-3 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-            collapsed && !mobile ? "justify-center" : ""
+            "flex items-center transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            collapsed && !mobile ? "justify-center" : "gap-3.5"
           )}
         >
-          <div className="h-11 w-11 shrink-0 rounded-full bg-gradient-to-br from-accent via-sky-300 to-highlight shadow-md" />
-          <div className={labelVisibilityClass(collapsed && !mobile)}>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              Operação acadêmica
+          <MinimalLogo />
+          {!collapsed || mobile ? (
+            <div className={labelVisibilityClass(false)}>
+              <div className="truncate text-[1.625rem] font-semibold tracking-[-0.03em] text-white">
+                Provas
+              </div>
             </div>
-            <div className="mt-1 truncate text-lg font-semibold text-white">Provas & Analytics</div>
-            <p className="mt-0.5 text-xs text-slate-400">Criação, correção e leitura de desempenho.</p>
-          </div>
+          ) : null}
         </div>
       </div>
 
       <div className="mx-2 border-t border-white/10" />
 
-      <div className="mt-5 flex-1 space-y-4 overflow-y-auto px-1">
+      <div className="mt-4 flex-1 space-y-4 overflow-y-auto overflow-x-hidden px-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         {navigationSections.map((section) => (
           <div key={section.label} className="space-y-2.5">
             <SidebarSectionLabel label={section.label} collapsed={collapsed && !mobile} />
             <div className="space-y-2">
-              {section.items.map((item) =>
-                item.type === "link" ? (
-                  <SidebarLink
-                    key={item.to}
-                    item={item}
-                    pathname={pathname}
-                    collapsed={collapsed && !mobile}
-                    onNavigate={onNavigate}
-                  />
-                ) : (
-                  <SidebarGroup
-                    key={item.id}
-                    item={item}
-                    pathname={pathname}
-                    collapsed={collapsed && !mobile}
-                    expanded={expandedGroups[item.id] ?? false}
-                    flyoutOpen={flyoutGroupId === item.id}
-                    onNavigate={onNavigate}
-                    onToggle={() => {
-                      if (collapsed && !mobile) {
-                        setFlyoutGroupId((current) => (current === item.id ? null : item.id));
-                        return;
-                      }
-
-                      setExpandedGroups((current) => ({
-                        ...current,
-                        [item.id]: !current[item.id]
-                      }));
-                    }}
-                  />
-                )
-              )}
+              {section.items.map((item) => (
+                <SidebarLink
+                  key={item.to}
+                  item={item}
+                  pathname={pathname}
+                  collapsed={collapsed && !mobile}
+                  onNavigate={onNavigate}
+                />
+              ))}
             </div>
           </div>
         ))}
@@ -466,13 +254,7 @@ const SidebarContent = ({
 export const AppShell = () => {
   const { pathname } = useLocation();
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
-  });
+  const [desktopSidebarExpanded, setDesktopSidebarExpanded] = useState(false);
 
   const currentRoute = useMemo(
     () =>
@@ -484,10 +266,6 @@ export const AppShell = () => {
   useEffect(() => {
     setMobileNavigationOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
-  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (!mobileNavigationOpen) {
@@ -505,16 +283,18 @@ export const AppShell = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <aside
+        data-testid="desktop-sidebar"
+        onMouseEnter={() => setDesktopSidebarExpanded(true)}
+        onMouseLeave={() => setDesktopSidebarExpanded(false)}
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:block",
-          sidebarCollapsed ? "w-[104px]" : "w-[286px]"
+          "fixed inset-y-0 left-0 z-30 hidden overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:block",
+          desktopSidebarExpanded ? "w-[286px]" : "w-[104px]"
         )}
       >
-        <div className="h-full px-4 py-4">
+        <div className="h-full overflow-hidden px-4 py-4">
           <SidebarContent
             pathname={pathname}
-            collapsed={sidebarCollapsed}
-            onToggleCollapse={() => setSidebarCollapsed((current) => !current)}
+            collapsed={!desktopSidebarExpanded}
           />
         </div>
       </aside>
@@ -522,7 +302,7 @@ export const AppShell = () => {
       <div
         className={cn(
           "min-h-screen transition-[padding-left] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          sidebarCollapsed ? "lg:pl-[104px]" : "lg:pl-[286px]"
+          desktopSidebarExpanded ? "lg:pl-[286px]" : "lg:pl-[104px]"
         )}
       >
         <div className="flex min-h-screen min-w-0 flex-col px-4 py-4 md:px-5 lg:px-6 lg:py-4">

@@ -5,7 +5,7 @@ import { AppShell } from "@/components/layout/app-shell";
 import { renderWithProviders } from "@/test/utils";
 
 describe("AppShell", () => {
-  it("renders without theme toggle and keeps the sidebar collapsible", () => {
+  it("renders without theme toggle and expands the sidebar on hover", () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/questions"]}>
         <Routes>
@@ -18,9 +18,13 @@ describe("AppShell", () => {
 
     expect(screen.queryByLabelText(/Ativar modo/i)).not.toBeInTheDocument();
 
-    const collapseButton = screen.getByLabelText("Recolher menu lateral");
-    fireEvent.click(collapseButton);
+    const sidebar = screen.getByTestId("desktop-sidebar");
+    expect(sidebar.className).toContain("w-[104px]");
 
-    expect(screen.getByLabelText("Expandir menu lateral")).toBeInTheDocument();
+    fireEvent.mouseEnter(sidebar);
+    expect(sidebar.className).toContain("w-[286px]");
+
+    fireEvent.mouseLeave(sidebar);
+    expect(sidebar.className).toContain("w-[104px]");
   });
 });

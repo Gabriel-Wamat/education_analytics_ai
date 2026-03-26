@@ -35,7 +35,12 @@ export const InsightsPanel = ({
           A análise textual é carregada separadamente para não bloquear o dashboard.
         </p>
       </div>
-      <Button variant="secondary" size="sm" onClick={onRetry}>
+      <Button
+        variant="secondary"
+        size="md"
+        onClick={onRetry}
+        className="shrink-0 whitespace-nowrap"
+      >
         <RefreshCcw className="h-4 w-4" />
         Tentar novamente
       </Button>
