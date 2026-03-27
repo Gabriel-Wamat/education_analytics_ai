@@ -65,29 +65,45 @@ const parseCsv = (content: string): string[][] =>
     .split(/\r?\n/)
     .map((line) => line.split(","));
 
+export const createExamTemplatePayload = (
+  questionIds: string[],
+  overrides?: Partial<{
+    title: string;
+    alternativeIdentificationType: "LETTERS" | "POWERS_OF_2";
+    discipline: string;
+    teacher: string;
+    examDate: string;
+  }>
+) => ({
+  title: overrides?.title ?? "Prova Base",
+  questionIds,
+  alternativeIdentificationType: overrides?.alternativeIdentificationType ?? "LETTERS",
+  headerMetadata: {
+    discipline: overrides?.discipline ?? "Matemática",
+    teacher: overrides?.teacher ?? "Prof. Ada Lovelace",
+    examDate: overrides?.examDate ?? "2026-04-10"
+  }
+});
+
 export const buildStudentResponsesCsvFromAnswerKey = (
   answerKeyCsv: string,
   studentPrefix = "ALUNO"
 ): string => {
   const [header, ...rows] = parseCsv(answerKeyCsv);
-  const expectedHeader = [
-    "examCode",
-    "questionPosition",
-    "questionId",
-    "alternativeIdentificationType",
-    "correctDisplayAnswer",
-    "correctOptionPositions"
-  ];
-
-  if (header.join(",") !== expectedHeader.join(",")) {
+  if (header[0] !== "examCode" || header.length < 2) {
     throw new Error("Cabeçalho inesperado no CSV de gabarito.");
   }
 
-  const outputRows = [["studentId", "studentName", "examCode", "questionPosition", "markedAnswer"]];
+  const questionHeaders = header.slice(1);
+  if (!questionHeaders.every((column, index) => column === `q${index + 1}`)) {
+    throw new Error("O CSV de gabarito não está no formato largo esperado.");
+  }
+
+  const outputRows = [["studentId", "studentName", "examCode", ...questionHeaders]];
   const examCodeIndex = new Map<string, number>();
 
   for (const row of rows) {
-    const [examCode, questionPosition, , , correctDisplayAnswer] = row;
+    const [examCode, ...answers] = row;
     const studentNumber = examCodeIndex.get(examCode) ?? examCodeIndex.size + 1;
 
     examCodeIndex.set(examCode, studentNumber);
@@ -95,8 +111,7 @@ export const buildStudentResponsesCsvFromAnswerKey = (
       `${studentPrefix}-${studentNumber}`,
       `Aluno ${studentNumber}`,
       examCode,
-      questionPosition,
-      correctDisplayAnswer
+      ...answers
     ]);
   }
 

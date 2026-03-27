@@ -1,6 +1,7 @@
 import { httpClient } from "@/services/http/client";
 import {
   AlternativeIdentificationType,
+  ExamHeaderMetadata,
   ExamTemplate,
   GenerateExamInstancesResponse
 } from "@/types/api";
@@ -17,6 +18,7 @@ export interface CreateExamTemplatePayload {
   title: string;
   questionIds: string[];
   alternativeIdentificationType: AlternativeIdentificationType;
+  headerMetadata: ExamHeaderMetadata;
 }
 
 export interface GenerateExamArtifactsPayload {

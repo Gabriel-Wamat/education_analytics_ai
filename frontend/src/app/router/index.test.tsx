@@ -1,5 +1,6 @@
+import { isValidElement } from "react";
 import { screen } from "@testing-library/react";
-import { RouterProvider, createMemoryRouter } from "react-router-dom";
+import { Navigate, RouterProvider, createMemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
 
 import { renderWithProviders } from "@/test/utils";
@@ -35,10 +36,13 @@ const renderRoute = (initialEntry: string) => {
 };
 
 describe("AppRouter", () => {
-  it("redirects / to /questions", async () => {
-    renderRoute("/");
+  it("configures the index route to redirect to /questions", () => {
+    const indexRoute = appRoutes[0]?.children?.find((route) => route.index);
 
-    expect(await screen.findByText("ROUTE_QUESTIONS_PAGE")).toBeInTheDocument();
+    expect(indexRoute).toBeDefined();
+    expect(isValidElement(indexRoute?.element)).toBe(true);
+    expect(indexRoute?.element?.type).toBe(Navigate);
+    expect(indexRoute?.element?.props.to).toBe("/questions");
   });
 
   it("maps /questions", async () => {

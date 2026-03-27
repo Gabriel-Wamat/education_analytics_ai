@@ -21,12 +21,30 @@ export const normalizeMarkedAnswer = (
         .map((value) => value.trim().toUpperCase())
         .filter((value) => value.length > 0)
     );
+    const availableCodes = new Set(
+      question.randomizedOptions.map((option) => option.displayCode.toUpperCase())
+    );
+    const invalidCodes = [...markedCodes].filter((value) => !availableCodes.has(value));
 
-    return question.randomizedOptions.map((option) => markedCodes.has(option.displayCode));
+    if (invalidCodes.length > 0) {
+      throw new Error(`Resposta invalida para letras: ${invalidCodes.join("|")}`);
+    }
+
+    return question.randomizedOptions.map((option) =>
+      markedCodes.has(option.displayCode.toUpperCase())
+    );
   }
 
   const parsedValue = Number(normalizedAnswer);
   if (!Number.isInteger(parsedValue) || parsedValue < 0) {
+    throw new Error(`Resposta inválida para potências de 2: ${markedAnswer}`);
+  }
+
+  const supportedMask = question.randomizedOptions.reduce(
+    (total, option) => total | Number(option.displayCode),
+    0
+  );
+  if ((parsedValue & ~supportedMask) !== 0) {
     throw new Error(`Resposta inválida para potências de 2: ${markedAnswer}`);
   }
 

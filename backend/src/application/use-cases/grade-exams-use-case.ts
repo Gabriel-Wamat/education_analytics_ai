@@ -45,30 +45,64 @@ export interface GradeExamsResult {
 
 const groupResponses = (
   studentResponses: StudentResponseRow[]
-): Map<string, Map<number, StudentResponseRow>> => {
-  const groupedResponses = new Map<string, Map<number, StudentResponseRow>>();
+): Map<string, StudentResponseRow> => {
+  const groupedResponses = new Map<string, StudentResponseRow>();
 
   for (const response of studentResponses) {
     const studentKey = `${response.studentId}::${response.examCode}`;
-    const studentResponsesByQuestion =
-      groupedResponses.get(studentKey) ?? new Map<number, StudentResponseRow>();
-
-    if (studentResponsesByQuestion.has(response.questionPosition)) {
+    if (groupedResponses.has(studentKey)) {
       throw new ValidationError(
-        "O arquivo de respostas possui linhas duplicadas para a mesma questão.",
-        [studentKey, String(response.questionPosition)]
+        "O arquivo de respostas possui linhas duplicadas para o mesmo aluno e prova.",
+        [studentKey]
       );
     }
 
-    studentResponsesByQuestion.set(response.questionPosition, response);
-    groupedResponses.set(studentKey, studentResponsesByQuestion);
+    groupedResponses.set(studentKey, response);
   }
 
   return groupedResponses;
 };
 
+const buildAnswerKeyLookup = (
+  answerKeyRows: Array<{ examCode: string; answers: string[] }>
+): Map<string, { examCode: string; answers: string[] }> => {
+  const answerKeyByExamCode = new Map<string, { examCode: string; answers: string[] }>();
+
+  for (const row of answerKeyRows) {
+    if (answerKeyByExamCode.has(row.examCode)) {
+      throw new ValidationError(
+        "O arquivo de gabarito possui mais de uma linha para a mesma prova.",
+        [row.examCode]
+      );
+    }
+
+    answerKeyByExamCode.set(row.examCode, row);
+  }
+
+  return answerKeyByExamCode;
+};
+
 const buildQuestionPositionLookup = (questionIds: string[]): Map<string, number> =>
   new Map(questionIds.map((questionId, index) => [questionId, index + 1]));
+
+const normalizeAnswerWithValidation = (
+  answer: string,
+  examCode: string,
+  questionPosition: number,
+  alternativeIdentificationType: string,
+  normalizer: () => boolean[]
+): boolean[] => {
+  try {
+    return normalizer();
+  } catch (error) {
+    throw new ValidationError("Resposta inválida encontrada no CSV.", [
+      examCode,
+      `q${questionPosition}`,
+      alternativeIdentificationType,
+      error instanceof Error ? error.message : "Erro desconhecido"
+    ]);
+  }
+};
 
 export class GradeExamsUseCase {
   constructor(
@@ -139,44 +173,57 @@ export class GradeExamsUseCase {
         buildQuestionPositionLookup(examTemplate!.questionsSnapshot.map((question) => question.id))
       ])
     );
+    const answerKeyByExamCode = buildAnswerKeyLookup(answerKeyRows);
 
     for (const answerKeyRow of answerKeyRows) {
       const examInstance = examInstancesByCode.get(answerKeyRow.examCode)!;
-      const question = examInstance.randomizedQuestions.find(
-        (item) => item.position === answerKeyRow.questionPosition
+      const orderedQuestions = [...examInstance.randomizedQuestions].sort(
+        (left, right) => left.position - right.position
       );
 
-      if (!question || question.originalQuestionId !== answerKeyRow.questionId) {
-        throw new ValidationError("O gabarito não corresponde à estrutura da prova gerada.", [
+      if (answerKeyRow.answers.length !== orderedQuestions.length) {
+        throw new ValidationError(
+          "O gabarito não possui a mesma quantidade de questões da prova.",
+          [
           answerKeyRow.examCode,
-          String(answerKeyRow.questionPosition)
-        ]);
+          String(orderedQuestions.length),
+          String(answerKeyRow.answers.length)
+        ]
+        );
       }
 
-      const expectedAnswer = buildDisplayAnswer(
-        buildExpectedStates(question),
-        question,
-        examInstance.alternativeIdentificationType
-      );
+      for (const [index, question] of orderedQuestions.entries()) {
+        const expectedAnswer = buildDisplayAnswer(
+          buildExpectedStates(question),
+          question,
+          examInstance.alternativeIdentificationType
+        );
 
-      if (expectedAnswer !== answerKeyRow.correctDisplayAnswer) {
-        throw new ValidationError("O gabarito não corresponde às respostas esperadas da prova.", [
-          answerKeyRow.examCode,
-          String(answerKeyRow.questionPosition)
-        ]);
+        if (expectedAnswer !== answerKeyRow.answers[index]) {
+          throw new ValidationError("O gabarito não corresponde às respostas esperadas da prova.", [
+            answerKeyRow.examCode,
+            `q${index + 1}`
+          ]);
+        }
       }
     }
 
     const groupedResponses = groupResponses(studentResponseRows);
     const students: GradedStudentResult[] = [];
 
-    for (const [studentKey, responsesByQuestion] of groupedResponses.entries()) {
-      const firstResponse = responsesByQuestion.values().next().value as StudentResponseRow;
-      const examInstance = examInstancesByCode.get(firstResponse.examCode);
+    for (const [studentKey, studentResponse] of groupedResponses.entries()) {
+      const examInstance = examInstancesByCode.get(studentResponse.examCode);
 
       if (!examInstance) {
         throw new ValidationError("Existe resposta para uma prova sem gabarito correspondente.", [
-          firstResponse.examCode
+          studentResponse.examCode
+        ]);
+      }
+
+      const answerKeyRow = answerKeyByExamCode.get(studentResponse.examCode);
+      if (!answerKeyRow) {
+        throw new ValidationError("Existe resposta para uma prova sem gabarito correspondente.", [
+          studentResponse.examCode
         ]);
       }
 
@@ -187,10 +234,35 @@ export class GradeExamsUseCase {
         ]);
       }
 
-      const questionResults = examInstance.randomizedQuestions.map((question) => {
-        const expectedStates = buildExpectedStates(question);
-        const response = responsesByQuestion.get(question.position);
-        const actualAnswer = response?.markedAnswer ?? "";
+      const orderedQuestions = [...examInstance.randomizedQuestions].sort(
+        (left, right) => left.position - right.position
+      );
+
+      if (studentResponse.answers.length !== orderedQuestions.length) {
+        throw new ValidationError(
+          "O arquivo de respostas não possui a mesma quantidade de questões da prova.",
+          [
+            studentKey,
+            String(orderedQuestions.length),
+            String(studentResponse.answers.length)
+          ]
+        );
+      }
+
+      const questionResults = orderedQuestions.map((question, index) => {
+      const expectedStates = normalizeAnswerWithValidation(
+          answerKeyRow.answers[index] ?? "",
+          studentResponse.examCode,
+          index + 1,
+          examInstance.alternativeIdentificationType,
+          () =>
+            normalizeMarkedAnswer(
+              answerKeyRow.answers[index] ?? "",
+              question,
+              examInstance.alternativeIdentificationType
+            )
+        );
+        const actualAnswer = studentResponse.answers[index] ?? "";
         const actualStates = normalizeMarkedAnswer(
           actualAnswer,
           question,
@@ -238,9 +310,9 @@ export class GradeExamsUseCase {
       const percentage = (totalScore / questionResults.length) * 100;
 
       students.push({
-        studentId: firstResponse.studentId,
-        studentName: firstResponse.studentName,
-        examCode: firstResponse.examCode,
+        studentId: studentResponse.studentId,
+        studentName: studentResponse.studentName,
+        examCode: studentResponse.examCode,
         totalScore,
         percentage,
         questionResults

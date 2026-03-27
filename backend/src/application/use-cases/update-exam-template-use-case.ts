@@ -1,6 +1,7 @@
 import { ExamTemplateInput } from "../dto/exam-template-input";
 import { NotFoundError } from "../errors/not-found-error";
 import { validateExamTemplateInput } from "../validators/exam-template-validator";
+import { ExamHeaderMetadata } from "../../domain/entities/exam-header-metadata";
 import { ExamTemplate } from "../../domain/entities/exam-template";
 import { Question } from "../../domain/entities/question";
 import { IExamTemplateRepository } from "../../domain/repositories/exam-template-repository";
@@ -11,6 +12,12 @@ const cloneQuestion = (question: Question): Question => ({
   createdAt: new Date(question.createdAt),
   updatedAt: new Date(question.updatedAt),
   options: question.options.map((option) => ({ ...option }))
+});
+
+const normalizeHeaderMetadata = (headerMetadata: ExamHeaderMetadata): ExamHeaderMetadata => ({
+  discipline: headerMetadata.discipline.trim(),
+  teacher: headerMetadata.teacher.trim(),
+  examDate: headerMetadata.examDate.trim()
 });
 
 export class UpdateExamTemplateUseCase {
@@ -38,6 +45,7 @@ export class UpdateExamTemplateUseCase {
     const updatedExamTemplate: ExamTemplate = {
       id: existingExamTemplate.id,
       title: input.title.trim(),
+      headerMetadata: normalizeHeaderMetadata(input.headerMetadata),
       questionsSnapshot: input.questionIds.map((questionId) =>
         cloneQuestion(questionsById.get(questionId)!)
       ),

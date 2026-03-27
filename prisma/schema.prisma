@@ -42,6 +42,7 @@ model Option {
 model ExamTemplate {
   id                            String                        @id @db.Uuid
   title                         String
+  headerMetadata                Json?
   alternativeIdentificationType AlternativeIdentificationType
   questionsSnapshot             Json
   createdAt                     DateTime                      @default(now())

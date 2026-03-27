@@ -94,7 +94,7 @@ export const GradingPage = () => {
               />
               <Dropzone
                 label="CSV de respostas dos alunos"
-                description="Arquivo consolidado com `studentId`, `examCode`, `questionPosition` e `markedAnswer`."
+                description="Arquivo consolidado com `studentId`, `studentName`, `examCode` e colunas `q1..qN`."
                 file={studentResponsesFile}
                 onFileSelect={setStudentResponsesFile}
               />

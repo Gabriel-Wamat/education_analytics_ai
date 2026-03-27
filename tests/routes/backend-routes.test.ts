@@ -1,15 +1,22 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 
 import request from "supertest";
 
 import {
   BackendTestHarness,
   buildStudentResponsesCsvFromAnswerKey,
+  createExamTemplatePayload,
   createBackendTestHarness,
   createQuestionPayload
 } from "../route-support/backend-harness";
+
+const extractPdfText = (pdfContent: string): string =>
+  [...pdfContent.matchAll(/<([0-9A-Fa-f]+)>/g)]
+    .map((match) => Buffer.from(match[1] ?? "", "hex").toString("latin1"))
+    .join("");
 
 describe("Backend route contracts", () => {
   let harness: BackendTestHarness;
@@ -97,14 +104,23 @@ describe("Backend route contracts", () => {
 
     const createTemplateResponse = await request(harness.app)
       .post("/exam-templates")
-      .send({
-        title: "Prova Base",
-        questionIds: [firstQuestionResponse.body.id, secondQuestionResponse.body.id],
-        alternativeIdentificationType: "LETTERS"
-      });
+      .send(
+        createExamTemplatePayload([firstQuestionResponse.body.id, secondQuestionResponse.body.id], {
+          title: "Prova Base",
+          alternativeIdentificationType: "LETTERS",
+          discipline: "Matemática",
+          teacher: "Prof. Ada Lovelace",
+          examDate: "2026-04-10"
+        })
+      );
 
     assert.equal(createTemplateResponse.status, 201);
     const examTemplateId = createTemplateResponse.body.id as string;
+    assert.deepEqual(createTemplateResponse.body.headerMetadata, {
+      discipline: "Matemática",
+      teacher: "Prof. Ada Lovelace",
+      examDate: "2026-04-10"
+    });
 
     const listTemplatesResponse = await request(harness.app).get("/exam-templates");
     assert.equal(listTemplatesResponse.status, 200);
@@ -115,18 +131,24 @@ describe("Backend route contracts", () => {
     assert.equal(getTemplateResponse.body.title, "Prova Base");
     assert.equal(getTemplateResponse.body.questionsSnapshot[0].topic, "Tema T1");
     assert.equal(getTemplateResponse.body.questionsSnapshot[0].unit, 1);
+    assert.equal(getTemplateResponse.body.headerMetadata.discipline, "Matemática");
 
     const updatedTemplateResponse = await request(harness.app)
       .put(`/exam-templates/${examTemplateId}`)
-      .send({
-        title: "Prova Atualizada",
-        questionIds: [secondQuestionResponse.body.id, firstQuestionResponse.body.id],
-        alternativeIdentificationType: "POWERS_OF_2"
-      });
+      .send(
+        createExamTemplatePayload([secondQuestionResponse.body.id, firstQuestionResponse.body.id], {
+          title: "Prova Atualizada",
+          alternativeIdentificationType: "POWERS_OF_2",
+          discipline: "Física",
+          teacher: "Profa. Grace Hopper",
+          examDate: "2026-05-20"
+        })
+      );
 
     assert.equal(updatedTemplateResponse.status, 200);
     assert.equal(updatedTemplateResponse.body.title, "Prova Atualizada");
     assert.equal(updatedTemplateResponse.body.alternativeIdentificationType, "POWERS_OF_2");
+    assert.equal(updatedTemplateResponse.body.headerMetadata.teacher, "Profa. Grace Hopper");
 
     const generateResponse = await request(harness.app)
       .post(`/exam-templates/${examTemplateId}/generate`)
@@ -136,6 +158,16 @@ describe("Backend route contracts", () => {
     assert.equal(generateResponse.body.quantity, 2);
     assert.equal(generateResponse.body.instances.length, 2);
     assert.equal(generateResponse.body.artifacts.length, 3);
+
+    const answerKeyArtifact = generateResponse.body.artifacts.find(
+      (artifact: { kind: string }) => artifact.kind === "CSV"
+    ) as { absolutePath: string } | undefined;
+    assert.ok(answerKeyArtifact);
+
+    const answerKeyContent = await fs.readFile(answerKeyArtifact.absolutePath, "utf-8");
+    const answerKeyRows = answerKeyContent.trim().split(/\r?\n/);
+    assert.equal(answerKeyRows.length, 3);
+    assert.match(answerKeyRows[0] ?? "", /^examCode,q1,q2$/);
   });
 
   it("supports grading, metrics, insights and exam template deletion cascade", async () => {
@@ -144,11 +176,12 @@ describe("Backend route contracts", () => {
       .send(createQuestionPayload("Cascade"));
     const examTemplateResponse = await request(harness.app)
       .post("/exam-templates")
-      .send({
-        title: "Prova Cascade",
-        questionIds: [questionResponse.body.id],
-        alternativeIdentificationType: "LETTERS"
-      });
+      .send(
+        createExamTemplatePayload([questionResponse.body.id], {
+          title: "Prova Cascade",
+          alternativeIdentificationType: "LETTERS"
+        })
+      );
 
     const examTemplateId = examTemplateResponse.body.id as string;
     const generationResponse = await request(harness.app)
@@ -199,5 +232,94 @@ describe("Backend route contracts", () => {
       `/exam-templates/${examTemplateId}`
     );
     assert.equal(getDeletedTemplateResponse.status, 404);
+  });
+
+  it("blocks generation when a legacy template has no header metadata", async () => {
+    const questionResponse = await request(harness.app)
+      .post("/questions")
+      .send(createQuestionPayload("Legacy"));
+
+    const now = new Date();
+    const examTemplate = await harness.prismaClient.examTemplate.create({
+      data: {
+        id: crypto.randomUUID(),
+        title: "Template legado",
+        headerMetadata: null,
+        alternativeIdentificationType: "LETTERS",
+        questionsSnapshot: [
+          {
+            ...questionResponse.body,
+            createdAt: questionResponse.body.createdAt,
+            updatedAt: questionResponse.body.updatedAt
+          }
+        ],
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+
+    const response = await request(harness.app)
+      .post(`/exam-templates/${examTemplate.id}/generate`)
+      .send({ quantity: 1 });
+
+    assert.equal(response.status, 400);
+    assert.equal(
+      response.body.message,
+      "O modelo de prova precisa ter disciplina, professor e data antes da geração."
+    );
+  });
+
+  it("renders PDF with header metadata, footer and student identification block", async () => {
+    const questionIds: string[] = [];
+    for (let index = 0; index < 12; index += 1) {
+      const response = await request(harness.app)
+        .post("/questions")
+        .send({
+          topic: "Leitura",
+          unit: 1,
+          statement: `Questão longa ${index + 1} com enunciado descritivo para forçar quebra de página e validar o layout completo do PDF.`,
+          options: [
+            { description: "Alternativa A muito detalhada para ocupar mais espaço no PDF.", isCorrect: true },
+            { description: "Alternativa B muito detalhada para ocupar mais espaço no PDF.", isCorrect: false },
+            { description: "Alternativa C muito detalhada para ocupar mais espaço no PDF.", isCorrect: false },
+            { description: "Alternativa D muito detalhada para ocupar mais espaço no PDF.", isCorrect: true }
+          ]
+        });
+      questionIds.push(response.body.id as string);
+    }
+
+    const examTemplateResponse = await request(harness.app)
+      .post("/exam-templates")
+      .send(
+        createExamTemplatePayload(questionIds, {
+          title: "Avaliação Bimestral",
+          discipline: "Matemática",
+          teacher: "Prof. Alan Turing",
+          examDate: "2026-06-15"
+        })
+      );
+    assert.equal(examTemplateResponse.status, 201);
+
+    const generationResponse = await request(harness.app)
+      .post(`/exam-templates/${examTemplateResponse.body.id}/generate`)
+      .send({ quantity: 1 });
+
+    assert.equal(generationResponse.status, 201);
+    const pdfArtifact = generationResponse.body.artifacts.find(
+      (artifact: { kind: string }) => artifact.kind === "PDF"
+    ) as { absolutePath: string } | undefined;
+    assert.ok(pdfArtifact);
+
+    const pdfContent = await fs.readFile(pdfArtifact.absolutePath, "latin1");
+    const extractedPdfText = extractPdfText(pdfContent);
+    assert.match(extractedPdfText, /Avaliação Bimestral/);
+    assert.match(extractedPdfText, /Disciplina: Matemática/);
+    assert.match(extractedPdfText, /Professor: Prof\. Alan Turing/);
+    assert.match(extractedPdfText, /Data: 15\/06\/2026/);
+    assert.match(extractedPdfText, /Nome do aluno:/);
+    assert.match(extractedPdfText, /CPF:/);
+
+    const footerMatches = extractedPdfText.match(/Prova [A-Z0-9-]+ - Pagina \d+ de \d+/g) ?? [];
+    assert.ok(footerMatches.length >= 2);
   });
 });

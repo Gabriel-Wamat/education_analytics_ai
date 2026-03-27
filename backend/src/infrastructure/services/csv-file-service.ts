@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+import { ValidationError } from "../../application/errors/validation-error";
 import {
   AnswerKeyRow,
   ICsvService,
@@ -9,7 +10,6 @@ import {
 import { ExamInstance } from "../../domain/entities/exam-instance";
 import { GeneratedArtifact } from "../../domain/entities/generated-artifact";
 import {
-  buildCorrectOptionPositions,
   buildDisplayAnswer,
   buildExpectedStates
 } from "../../domain/services/answer-normalizer";
@@ -79,20 +79,56 @@ const parseCsv = (content: string): string[][] => {
   return rows.filter((row) => row.some((value) => value.length > 0));
 };
 
-const parseRecords = (buffer: Buffer): Array<Record<string, string>> => {
+const parseRecords = (
+  buffer: Buffer
+): { header: string[]; records: Array<Record<string, string>> } => {
   const rows = parseCsv(buffer.toString("utf-8").replace(/^\uFEFF/, ""));
   if (rows.length === 0) {
-    return [];
+    return { header: [], records: [] };
   }
 
   const [header, ...dataRows] = rows;
-  return dataRows.map((row) =>
-    Object.fromEntries(header.map((columnName, index) => [columnName, row[index] ?? ""]))
-  );
+  return {
+    header,
+    records: dataRows.map((row) =>
+      Object.fromEntries(header.map((columnName, index) => [columnName, row[index] ?? ""]))
+    )
+  };
 };
 
 const ensureDirectory = async (targetDir: string): Promise<void> => {
   await fs.mkdir(targetDir, { recursive: true });
+};
+
+const extractQuestionHeaders = (
+  header: string[],
+  prefixColumns: string[],
+  fileLabel: string
+): string[] => {
+  if (header.length <= prefixColumns.length) {
+    throw new ValidationError(`O arquivo de ${fileLabel} não possui colunas de questões.`);
+  }
+
+  const actualPrefix = header.slice(0, prefixColumns.length);
+  if (actualPrefix.join(",") !== prefixColumns.join(",")) {
+    throw new ValidationError(
+      `O cabeçalho do arquivo de ${fileLabel} está inválido.`,
+      [header.join(",")]
+    );
+  }
+
+  const questionHeaders = header.slice(prefixColumns.length);
+  for (let index = 0; index < questionHeaders.length; index += 1) {
+    const expectedColumn = `q${index + 1}`;
+    if (questionHeaders[index] !== expectedColumn) {
+      throw new ValidationError(
+        `O arquivo de ${fileLabel} deve usar colunas sequenciais q1..qN.`,
+        [questionHeaders.join(",")]
+      );
+    }
+  }
+
+  return questionHeaders;
 };
 
 export class CsvFileService implements ICsvService {
@@ -106,32 +142,28 @@ export class CsvFileService implements ICsvService {
     const fileName = `answer-key-${batchId}.csv`;
     const absolutePath = path.resolve(outputDir, fileName);
 
-    const rows: string[][] = [
-      [
-        "examCode",
-        "questionPosition",
-        "questionId",
-        "alternativeIdentificationType",
-        "correctDisplayAnswer",
-        "correctOptionPositions"
-      ]
+    const questionCount = instances[0]?.randomizedQuestions.length ?? 0;
+    const headerRow = [
+      "examCode",
+      ...Array.from({ length: questionCount }, (_, index) => `q${index + 1}`)
     ];
+    const rows: string[][] = [headerRow];
 
     for (const instance of instances) {
-      for (const question of instance.randomizedQuestions) {
-        rows.push([
-          instance.examCode,
-          String(question.position),
-          question.originalQuestionId,
-          instance.alternativeIdentificationType,
+      const orderedQuestions = [...instance.randomizedQuestions].sort(
+        (left, right) => left.position - right.position
+      );
+
+      rows.push([
+        instance.examCode,
+        ...orderedQuestions.map((question) =>
           buildDisplayAnswer(
             buildExpectedStates(question),
             question,
             instance.alternativeIdentificationType
-          ),
-          buildCorrectOptionPositions(question)
-        ]);
-      }
+          )
+        )
+      ]);
     }
 
     await fs.writeFile(absolutePath, stringifyCsv(rows), "utf-8");
@@ -145,27 +177,28 @@ export class CsvFileService implements ICsvService {
   }
 
   async parseAnswerKey(file: Buffer): Promise<AnswerKeyRow[]> {
-    const records = parseRecords(file);
+    const { header, records } = parseRecords(file);
+    const questionHeaders = extractQuestionHeaders(header, ["examCode"], "gabarito");
 
     return records.map((record) => ({
       examCode: record.examCode,
-      questionPosition: Number(record.questionPosition),
-      questionId: record.questionId,
-      alternativeIdentificationType: record.alternativeIdentificationType,
-      correctDisplayAnswer: record.correctDisplayAnswer,
-      correctOptionPositions: record.correctOptionPositions
+      answers: questionHeaders.map((headerName) => record[headerName] ?? "")
     }));
   }
 
   async parseStudentResponses(file: Buffer): Promise<StudentResponseRow[]> {
-    const records = parseRecords(file);
+    const { header, records } = parseRecords(file);
+    const questionHeaders = extractQuestionHeaders(
+      header,
+      ["studentId", "studentName", "examCode"],
+      "respostas dos alunos"
+    );
 
     return records.map((record) => ({
       studentId: record.studentId,
       studentName: record.studentName || undefined,
       examCode: record.examCode,
-      questionPosition: Number(record.questionPosition),
-      markedAnswer: record.markedAnswer ?? ""
+      answers: questionHeaders.map((headerName) => record[headerName] ?? "")
     }));
   }
 }

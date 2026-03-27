@@ -76,7 +76,12 @@ const createGeneratedExamFixture = async (
   const examTemplateResponse = await request(app).post("/exam-templates").send({
     title: `Modelo ${alternativeIdentificationType}`,
     questionIds: [questionId],
-    alternativeIdentificationType
+    alternativeIdentificationType,
+    headerMetadata: {
+      discipline: "Matemática",
+      teacher: "Prof. Ada Lovelace",
+      examDate: "2026-04-10"
+    }
   });
 
   world.examTemplateId = examTemplateResponse.body.id as string;
@@ -108,8 +113,8 @@ const submitGradeRequest = async (
   const answerKeyBuffer = await fs.readFile(world.answerKeyArtifactPath);
   const instance = world.generatedInstances[0] as GeneratedExamInstancePayload;
   const studentResponseCsv = [
-    "studentId,studentName,examCode,questionPosition,markedAnswer",
-    `ALUNO-1,Ana,${instance.examCode},1,${markedAnswer}`
+    "studentId,studentName,examCode,q1",
+    `ALUNO-1,Ana,${instance.examCode},${markedAnswer}`
   ].join("\n");
 
   world.response = await request(app)

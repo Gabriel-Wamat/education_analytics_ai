@@ -14,6 +14,7 @@ Funcionalidade: Gerenciamento de provas
     Então a resposta deve ter status 201
     E a prova retornada deve ter o título "Prova de Matemática A"
     E a prova retornada deve usar o tipo de alternativa "LETTERS"
+    E a prova retornada deve ter disciplina "Matemática", professor "Prof. Ada Lovelace" e data "2026-04-10"
     E a prova retornada deve conter 2 questões no snapshot
 
   Cenário: Criação de prova com identificação por potências de 2
@@ -29,6 +30,7 @@ Funcionalidade: Gerenciamento de provas
     Então a resposta deve ter status 201
     E a prova retornada deve ter o título "Prova de Matemática B"
     E a prova retornada deve usar o tipo de alternativa "POWERS_OF_2"
+    E a prova retornada deve ter disciplina "Matemática", professor "Prof. Ada Lovelace" e data "2026-04-10"
     E a prova retornada deve conter 2 questões no snapshot
 
   Cenário: Imutabilidade do snapshot da prova

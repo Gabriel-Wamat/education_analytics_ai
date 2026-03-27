@@ -1,4 +1,5 @@
 import { Then, When } from "@cucumber/cucumber";
+import { randomUUID } from "node:crypto";
 import request from "supertest";
 
 import { getTestContext } from "../support/test-context";
@@ -16,13 +17,57 @@ When(
     this.response = await request(app).post("/exam-templates").send({
       title,
       questionIds: this.questionIds,
-      alternativeIdentificationType
+      alternativeIdentificationType,
+      headerMetadata: {
+        discipline: "Matemática",
+        teacher: "Prof. Ada Lovelace",
+        examDate: "2026-04-10"
+      }
     });
 
     const createdExamTemplate = this.response.body as { id?: string };
     if (createdExamTemplate.id) {
       this.examTemplateId = createdExamTemplate.id;
     }
+  }
+);
+
+When(
+  "eu criar um modelo de prova legado sem cabeçalho com o título {string}",
+  async function (this: AcceptanceWorld, title: string) {
+    const { prismaClient } = getTestContext();
+    const now = new Date();
+
+    const questions = await prismaClient.question.findMany({
+      where: { id: { in: this.questionIds } },
+      include: { options: true }
+    });
+
+    const examTemplate = await prismaClient.examTemplate.create({
+      data: {
+        id: randomUUID(),
+        title,
+        headerMetadata: null,
+        alternativeIdentificationType: "LETTERS",
+        questionsSnapshot: questions.map((question) => ({
+          id: question.id,
+          topic: question.topic,
+          unit: question.unit,
+          statement: question.statement,
+          options: question.options.map((option) => ({
+            id: option.id,
+            description: option.description,
+            isCorrect: option.isCorrect
+          })),
+          createdAt: question.createdAt.toISOString(),
+          updatedAt: question.updatedAt.toISOString()
+        })),
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+
+    this.examTemplateId = examTemplate.id;
   }
 );
 
@@ -65,6 +110,42 @@ Then(
     if (payload.questionsSnapshot.length !== expectedQuestionsCount) {
       throw new Error(
         `Quantidade de questões inesperada. Esperado: ${expectedQuestionsCount}. Recebido: ${payload.questionsSnapshot.length}.`
+      );
+    }
+  }
+);
+
+Then(
+  "a prova retornada deve ter disciplina {string}, professor {string} e data {string}",
+  function (
+    this: AcceptanceWorld,
+    expectedDiscipline: string,
+    expectedTeacher: string,
+    expectedDate: string
+  ) {
+    const payload = this.response?.body as {
+      headerMetadata?: { discipline: string; teacher: string; examDate: string };
+    };
+
+    if (!payload.headerMetadata) {
+      throw new Error("A prova retornada não possui headerMetadata.");
+    }
+
+    if (payload.headerMetadata.discipline !== expectedDiscipline) {
+      throw new Error(
+        `Disciplina inesperada. Esperado: ${expectedDiscipline}. Recebido: ${payload.headerMetadata.discipline}.`
+      );
+    }
+
+    if (payload.headerMetadata.teacher !== expectedTeacher) {
+      throw new Error(
+        `Professor inesperado. Esperado: ${expectedTeacher}. Recebido: ${payload.headerMetadata.teacher}.`
+      );
+    }
+
+    if (payload.headerMetadata.examDate !== expectedDate) {
+      throw new Error(
+        `Data inesperada. Esperado: ${expectedDate}. Recebido: ${payload.headerMetadata.examDate}.`
       );
     }
   }

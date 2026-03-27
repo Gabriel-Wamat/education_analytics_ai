@@ -51,20 +51,6 @@ const buildCorrectDisplayAnswer = (
   return String(selectedOptions.reduce((total, option) => total + Number(option), 0));
 };
 
-const buildCorrectOptionPositions = (
-  instance: GeneratedExamInstancePayload,
-  questionPosition: number
-): string => {
-  const question = instance.randomizedQuestions.find((item) => item.position === questionPosition);
-
-  return (
-    question?.randomizedOptions
-      .filter((option) => option.isCorrect)
-      .map((option) => String(option.position))
-      .join("|") ?? ""
-  );
-};
-
 When(
   "eu gerar {int} instâncias a partir do modelo de prova cadastrado",
   async function (this: AcceptanceWorld, quantity: number) {
@@ -146,41 +132,26 @@ Then(
     const csvContent = await fs.readFile(this.answerKeyArtifactPath, "utf-8");
     const [header, ...rows] = parseCsv(csvContent);
 
+    const expectedQuestionCount =
+      (this.generatedInstances[0] as GeneratedExamInstancePayload | undefined)?.randomizedQuestions
+        .length ?? 0;
     const expectedHeader = [
       "examCode",
-      "questionPosition",
-      "questionId",
-      "alternativeIdentificationType",
-      "correctDisplayAnswer",
-      "correctOptionPositions"
+      ...Array.from({ length: expectedQuestionCount }, (_, index) => `q${index + 1}`)
     ];
 
     if (header.join(",") !== expectedHeader.join(",")) {
       throw new Error(`Cabeçalho inesperado no CSV: ${header.join(",")}`);
     }
 
-    const expectedRowsCount = this.generatedInstances.reduce(
-      (total, instance) =>
-        total + (instance as GeneratedExamInstancePayload).randomizedQuestions.length,
-      0
-    );
-
-    if (rows.length !== expectedRowsCount) {
+    if (rows.length !== this.generatedInstances.length) {
       throw new Error(
-        `Quantidade inesperada de linhas no gabarito. Esperado: ${expectedRowsCount}. Recebido: ${rows.length}.`
+        `Quantidade inesperada de linhas no gabarito. Esperado: ${this.generatedInstances.length}. Recebido: ${rows.length}.`
       );
     }
 
     for (const row of rows) {
-      const [
-        examCode,
-        questionPositionValue,
-        questionId,
-        alternativeIdentificationType,
-        correctDisplayAnswer,
-        correctOptionPositions
-      ] = row;
-      const questionPosition = Number(questionPositionValue);
+      const [examCode, ...answers] = row;
 
       const instance = this.generatedInstances.find(
         (generatedInstance) => String(generatedInstance.examCode) === examCode
@@ -190,24 +161,15 @@ Then(
         throw new Error(`Instância não encontrada para o examCode ${examCode}.`);
       }
 
-      const question = instance.randomizedQuestions.find(
-        (item) => item.position === questionPosition
-      );
-
-      if (!question || question.originalQuestionId !== questionId) {
-        throw new Error(`Questão inválida no gabarito para a prova ${examCode}.`);
+      if (answers.length !== instance.randomizedQuestions.length) {
+        throw new Error(`Quantidade de respostas inválida no gabarito para a prova ${examCode}.`);
       }
 
-      if (alternativeIdentificationType !== instance.alternativeIdentificationType) {
-        throw new Error(`Tipo de identificação inválido para a prova ${examCode}.`);
-      }
-
-      if (correctDisplayAnswer !== buildCorrectDisplayAnswer(instance, questionPosition)) {
-        throw new Error(`Resposta correta inválida no gabarito para ${examCode}.`);
-      }
-
-      if (correctOptionPositions !== buildCorrectOptionPositions(instance, questionPosition)) {
-        throw new Error(`Posições corretas inválidas no gabarito para ${examCode}.`);
+      for (const question of instance.randomizedQuestions) {
+        const answer = answers[question.position - 1] ?? "";
+        if (answer !== buildCorrectDisplayAnswer(instance, question.position)) {
+          throw new Error(`Resposta correta inválida no gabarito para ${examCode}, q${question.position}.`);
+        }
       }
     }
   }

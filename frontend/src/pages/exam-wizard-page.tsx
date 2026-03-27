@@ -31,9 +31,9 @@ import { useCreateExamTemplate } from "@/features/exam-templates/hooks";
 const examWizardSchema = z.object({
   title: z.string().trim().min(1, "Informe o título da prova."),
   alternativeIdentificationType: z.enum(["LETTERS", "POWERS_OF_2"]),
-  discipline: z.string().optional(),
-  teacher: z.string().optional(),
-  date: z.string().optional()
+  discipline: z.string().trim().min(1, "Informe a disciplina da prova."),
+  teacher: z.string().trim().min(1, "Informe o professor responsável."),
+  date: z.string().trim().min(1, "Informe a data da prova.")
 });
 
 type ExamWizardSchema = z.infer<typeof examWizardSchema>;
@@ -120,7 +120,12 @@ export const ExamWizardPage = () => {
         title: values.title,
         questionIds: selectedQuestionIds,
         alternativeIdentificationType:
-          values.alternativeIdentificationType as AlternativeIdentificationType
+          values.alternativeIdentificationType as AlternativeIdentificationType,
+        headerMetadata: {
+          discipline: values.discipline,
+          teacher: values.teacher,
+          examDate: values.date
+        }
       });
 
       setCreatedExamTemplate(createdTemplate);
@@ -265,7 +270,7 @@ export const ExamWizardPage = () => {
             <CardHeader>
               <h2 className="text-2xl font-bold text-slate-800">Resumo da prova</h2>
               <p className="mt-1 text-base text-slate-600">
-                Configure o template e mantenha os metadados futuros visíveis sem competir com o fluxo principal.
+                Configure o template, o cabeçalho oficial da prova e a forma de identificação das alternativas.
               </p>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -291,7 +296,6 @@ export const ExamWizardPage = () => {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-highlight" />
                   <div className="font-semibold text-slate-800">Cabeçalho da prova</div>
-                  <StatusBadge tone="warning">Em breve</StatusBadge>
                 </div>
 
                 <div className="grid gap-4">
@@ -301,6 +305,7 @@ export const ExamWizardPage = () => {
                       <BookOpenCheck className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input id="discipline" className="pl-10" placeholder="Matemática" {...register("discipline")} />
                     </div>
+                    {errors.discipline ? <FieldError>{errors.discipline.message}</FieldError> : null}
                   </Field>
 
                   <Field>
@@ -309,6 +314,7 @@ export const ExamWizardPage = () => {
                       <GraduationCap className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input id="teacher" className="pl-10" placeholder="Profa. Carla Mendes" {...register("teacher")} />
                     </div>
+                    {errors.teacher ? <FieldError>{errors.teacher.message}</FieldError> : null}
                   </Field>
 
                   <Field>
@@ -317,6 +323,7 @@ export const ExamWizardPage = () => {
                       <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <Input id="date" type="date" className="pl-10" {...register("date")} />
                     </div>
+                    {errors.date ? <FieldError>{errors.date.message}</FieldError> : null}
                   </Field>
                 </div>
               </div>

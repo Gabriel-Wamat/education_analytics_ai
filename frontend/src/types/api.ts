@@ -17,9 +17,16 @@ export interface Question {
   updatedAt: string;
 }
 
+export interface ExamHeaderMetadata {
+  discipline: string;
+  teacher: string;
+  examDate: string;
+}
+
 export interface ExamTemplate {
   id: string;
   title: string;
+  headerMetadata: ExamHeaderMetadata | null;
   questionsSnapshot: Question[];
   alternativeIdentificationType: AlternativeIdentificationType;
   createdAt: string;

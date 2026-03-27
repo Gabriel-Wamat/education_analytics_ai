@@ -61,18 +61,20 @@ const buildStudentRows = (
   studentName: string,
   instance: GeneratedExamInstancePayload,
   answerPlan: Record<string, AnswerMode>
-): string[] =>
-  Object.entries(answerPlan)
-    .map(([questionId, answerMode]) => {
-      const answer = buildAnswerForQuestion(instance, questionId, answerMode);
+): string => {
+  const answers = [...instance.randomizedQuestions]
+    .sort((left, right) => left.position - right.position)
+    .map((question) => {
+      const answerMode = answerPlan[question.originalQuestionId];
+      if (!answerMode) {
+        return "";
+      }
 
-      return `${studentId},${studentName},${instance.examCode},${answer.questionPosition},${answer.markedAnswer}`;
-    })
-    .sort((left, right) => {
-      const leftPosition = Number(left.split(",")[3]);
-      const rightPosition = Number(right.split(",")[3]);
-      return leftPosition - rightPosition;
+      return buildAnswerForQuestion(instance, question.originalQuestionId, answerMode).markedAnswer;
     });
+
+  return `${studentId},${studentName},${instance.examCode},${answers.join(",")}`;
+};
 
 const getInsightsPayload = (world: AcceptanceWorld): {
   metrics: DashboardMetricsResponse;
@@ -114,7 +116,12 @@ Given(
     const examTemplateResponse = await request(app).post("/exam-templates").send({
       title: "Prova da Turma A",
       questionIds: this.questionIds,
-      alternativeIdentificationType: "LETTERS"
+      alternativeIdentificationType: "LETTERS",
+      headerMetadata: {
+        discipline: "Ciências",
+        teacher: "Profa. Katherine Johnson",
+        examDate: "2026-04-10"
+      }
     });
 
     this.examTemplateId = examTemplateResponse.body.id as string;
@@ -137,13 +144,16 @@ Given(
     const answerKeyBuffer = await fs.readFile(this.answerKeyArtifactPath);
     const [firstInstance, secondInstance] = this.generatedInstances as GeneratedExamInstancePayload[];
 
+    const questionHeaders = [...firstInstance.randomizedQuestions]
+      .sort((left, right) => left.position - right.position)
+      .map((question) => `q${question.position}`);
     const studentRows = [
-      "studentId,studentName,examCode,questionPosition,markedAnswer",
-      ...buildStudentRows("ALUNO-1", "Ana", firstInstance, {
+      ["studentId", "studentName", "examCode", ...questionHeaders].join(","),
+      buildStudentRows("ALUNO-1", "Ana", firstInstance, {
         [this.questionIds[0]!]: "correct",
         [this.questionIds[1]!]: "correct"
       }),
-      ...buildStudentRows("ALUNO-2", "Bruno", secondInstance, {
+      buildStudentRows("ALUNO-2", "Bruno", secondInstance, {
         [this.questionIds[0]!]: "firstIncorrect",
         [this.questionIds[1]!]: "correct"
       })

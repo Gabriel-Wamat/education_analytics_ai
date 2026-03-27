@@ -38,6 +38,17 @@ export class GenerateExamInstancesUseCase {
       throw new NotFoundError("Modelo de prova não encontrado.");
     }
 
+    if (
+      !examTemplate.headerMetadata ||
+      examTemplate.headerMetadata.discipline.trim().length === 0 ||
+      examTemplate.headerMetadata.teacher.trim().length === 0 ||
+      examTemplate.headerMetadata.examDate.trim().length === 0
+    ) {
+      throw new ValidationError(
+        "O modelo de prova precisa ter disciplina, professor e data antes da geração."
+      );
+    }
+
     const batchId = randomUUID();
     const maxAttempts = input.quantity * 20;
     const signatures = new Set<string>();
@@ -70,6 +81,7 @@ export class GenerateExamInstancesUseCase {
     const outputDir = path.resolve(this.artifactsBaseDir, batchId);
     const pdfArtifacts = await this.pdfGeneratorService.generateExamPdfs(
       batchId,
+      examTemplate,
       persistedInstances,
       outputDir
     );

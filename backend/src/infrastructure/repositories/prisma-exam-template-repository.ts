@@ -2,9 +2,16 @@ import { Prisma, PrismaClient, ExamTemplate as PrismaExamTemplate } from "@prism
 import { z } from "zod";
 
 import { AlternativeIdentificationType } from "../../domain/entities/alternative-identification-type";
+import { ExamHeaderMetadata } from "../../domain/entities/exam-header-metadata";
 import { ExamTemplate } from "../../domain/entities/exam-template";
 import { Question } from "../../domain/entities/question";
 import { IExamTemplateRepository } from "../../domain/repositories/exam-template-repository";
+
+const headerMetadataSchema = z.object({
+  discipline: z.string(),
+  teacher: z.string(),
+  examDate: z.string()
+});
 
 const snapshotOptionSchema = z.object({
   id: z.string().uuid(),
@@ -24,8 +31,20 @@ const snapshotQuestionSchema = z.object({
 
 const snapshotQuestionListSchema = z.array(snapshotQuestionSchema);
 
+const toHeaderMetadataJson = (
+  headerMetadata: ExamHeaderMetadata | null
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput =>
+  headerMetadata
+    ? (JSON.parse(JSON.stringify(headerMetadata)) as Prisma.InputJsonValue)
+    : Prisma.JsonNull;
+
 const toSnapshotJson = (questionsSnapshot: Question[]): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(questionsSnapshot)) as Prisma.InputJsonValue;
+
+const toDomainHeaderMetadata = (
+  headerMetadata: Prisma.JsonValue | null
+): ExamHeaderMetadata | null =>
+  headerMetadata ? headerMetadataSchema.parse(headerMetadata) : null;
 
 const toDomainQuestionsSnapshot = (questionsSnapshot: Prisma.JsonValue): Question[] =>
   snapshotQuestionListSchema.parse(questionsSnapshot).map((question) => ({
@@ -45,6 +64,7 @@ const toDomainQuestionsSnapshot = (questionsSnapshot: Prisma.JsonValue): Questio
 const toDomainExamTemplate = (examTemplate: PrismaExamTemplate): ExamTemplate => ({
   id: examTemplate.id,
   title: examTemplate.title,
+  headerMetadata: toDomainHeaderMetadata(examTemplate.headerMetadata),
   alternativeIdentificationType:
     examTemplate.alternativeIdentificationType as AlternativeIdentificationType,
   questionsSnapshot: toDomainQuestionsSnapshot(examTemplate.questionsSnapshot),
@@ -60,6 +80,7 @@ export class PrismaExamTemplateRepository implements IExamTemplateRepository {
       data: {
         id: examTemplate.id,
         title: examTemplate.title,
+        headerMetadata: toHeaderMetadataJson(examTemplate.headerMetadata),
         alternativeIdentificationType: examTemplate.alternativeIdentificationType,
         questionsSnapshot: toSnapshotJson(examTemplate.questionsSnapshot),
         createdAt: examTemplate.createdAt,
@@ -93,6 +114,7 @@ export class PrismaExamTemplateRepository implements IExamTemplateRepository {
       where: { id: examTemplate.id },
       data: {
         title: examTemplate.title,
+        headerMetadata: toHeaderMetadataJson(examTemplate.headerMetadata),
         alternativeIdentificationType: examTemplate.alternativeIdentificationType,
         questionsSnapshot: toSnapshotJson(examTemplate.questionsSnapshot),
         updatedAt: examTemplate.updatedAt
@@ -103,16 +125,16 @@ export class PrismaExamTemplateRepository implements IExamTemplateRepository {
   }
 
   async delete(id: string): Promise<void> {
-    await this.prismaClient.$transaction([
-      this.prismaClient.examReport.deleteMany({
+    await this.prismaClient.$transaction(async (transactionClient) => {
+      await transactionClient.examReport.deleteMany({
         where: { templateId: id }
-      }),
-      this.prismaClient.examInstance.deleteMany({
+      });
+      await transactionClient.examInstance.deleteMany({
         where: { templateId: id }
-      }),
-      this.prismaClient.examTemplate.delete({
+      });
+      await transactionClient.examTemplate.delete({
         where: { id }
-      })
-    ]);
+      });
+    });
   }
 }
