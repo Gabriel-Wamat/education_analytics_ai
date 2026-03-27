@@ -38,11 +38,17 @@ const renderRoute = (initialEntry: string) => {
 describe("AppRouter", () => {
   it("configures the index route to redirect to /questions", () => {
     const indexRoute = appRoutes[0]?.children?.find((route) => route.index);
+    const redirectElement = indexRoute?.element;
 
     expect(indexRoute).toBeDefined();
-    expect(isValidElement(indexRoute?.element)).toBe(true);
-    expect(indexRoute?.element?.type).toBe(Navigate);
-    expect(indexRoute?.element?.props.to).toBe("/questions");
+    expect(isValidElement(redirectElement)).toBe(true);
+
+    if (!isValidElement(redirectElement)) {
+      throw new Error("A rota inicial não está configurada com um elemento React válido.");
+    }
+
+    expect(redirectElement.type).toBe(Navigate);
+    expect(redirectElement.props.to).toBe("/questions");
   });
 
   it("maps /questions", async () => {
