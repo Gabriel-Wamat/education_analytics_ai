@@ -78,6 +78,18 @@ export interface AppDependencies {
   clock?: IClock;
 }
 
+export const resolveArtifactsBaseDir = (override?: string): string => {
+  if (override) {
+    return override;
+  }
+
+  if (process.env.VERCEL === "1" || process.env.VERCEL_ENV) {
+    return path.resolve("/tmp/exam-batches");
+  }
+
+  return path.resolve(process.cwd(), "output/exam-batches");
+};
+
 const resolveEmailService = (dependencies: AppDependencies): IEmailService => {
   if (dependencies.emailService) return dependencies.emailService;
 
@@ -106,8 +118,7 @@ const resolveEmailService = (dependencies: AppDependencies): IEmailService => {
 
 export const createApp = (dependencies: AppDependencies = {}): Express => {
   const prismaClient = dependencies.prismaClient ?? createPrismaClient();
-  const artifactsBaseDir =
-    dependencies.artifactsBaseDir ?? path.resolve(process.cwd(), "output/exam-batches");
+  const artifactsBaseDir = resolveArtifactsBaseDir(dependencies.artifactsBaseDir);
   const jsonStorageDir =
     dependencies.jsonStorageDir ?? path.resolve(process.cwd(), "data");
   const clock = dependencies.clock ?? new SystemClock();
