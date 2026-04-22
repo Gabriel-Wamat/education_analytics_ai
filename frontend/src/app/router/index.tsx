@@ -17,6 +17,7 @@ import { GoalsPage } from "@/pages/goals-page";
 import { GradingPage } from "@/pages/grading-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { QuestionsPage } from "@/pages/questions-page";
+import { StudentProfilePage } from "@/pages/student-profile-page";
 import { StudentsPage } from "@/pages/students-page";
 
 export const appRoutes: RouteObject[] = [
@@ -55,6 +56,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: "students",
         element: <StudentsPage />
+      },
+      {
+        path: "students/:studentId",
+        element: <StudentProfilePage />
       },
       {
         path: "goals",

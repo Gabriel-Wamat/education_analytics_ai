@@ -92,6 +92,10 @@ describe("StudentsPage", () => {
     );
 
     expect(screen.getByText("Ana Souza")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ana Souza" })).toHaveAttribute(
+      "href",
+      "/students/student-1"
+    );
     expect(screen.getByText("Bruno Lima")).toBeInTheDocument();
     expect(screen.getByText("Carla Nunes")).toBeInTheDocument();
     expect(screen.getAllByText("Turma Alfa")).toHaveLength(3);

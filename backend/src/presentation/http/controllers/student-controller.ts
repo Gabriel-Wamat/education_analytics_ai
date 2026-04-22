@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import { CreateStudentUseCase } from "../../../application/use-cases/create-student-use-case";
 import { DeleteStudentUseCase } from "../../../application/use-cases/delete-student-use-case";
 import { GetStudentUseCase } from "../../../application/use-cases/get-student-use-case";
+import { GetStudentProfileUseCase } from "../../../application/use-cases/get-student-profile-use-case";
 import { ListStudentsUseCase } from "../../../application/use-cases/list-students-use-case";
 import { UpdateStudentUseCase } from "../../../application/use-cases/update-student-use-case";
 
@@ -11,6 +12,7 @@ export class StudentController {
     private readonly createStudentUseCase: CreateStudentUseCase,
     private readonly listStudentsUseCase: ListStudentsUseCase,
     private readonly getStudentUseCase: GetStudentUseCase,
+    private readonly getStudentProfileUseCase: GetStudentProfileUseCase,
     private readonly updateStudentUseCase: UpdateStudentUseCase,
     private readonly deleteStudentUseCase: DeleteStudentUseCase
   ) {}
@@ -28,6 +30,11 @@ export class StudentController {
   getById = async (request: Request, response: Response): Promise<void> => {
     const student = await this.getStudentUseCase.execute(request.params.id as string);
     response.status(200).json(student);
+  };
+
+  getProfile = async (request: Request, response: Response): Promise<void> => {
+    const profile = await this.getStudentProfileUseCase.execute(request.params.id as string);
+    response.status(200).json(profile);
   };
 
   update = async (request: Request, response: Response): Promise<void> => {

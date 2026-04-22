@@ -1,5 +1,6 @@
 import { Pencil, Plus, Trash2, UserPlus, UsersRound } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -222,7 +223,14 @@ export const StudentsPage = () => {
           <TableBody>
             {filtered.map((student) => (
               <TableRow key={student.id}>
-                <TableCell className="font-semibold text-slate-800">{student.name}</TableCell>
+                <TableCell>
+                  <Link
+                    to={`/students/${student.id}`}
+                    className="font-semibold text-slate-800 transition-colors hover:text-primary-dark"
+                  >
+                    {student.name}
+                  </Link>
+                </TableCell>
                 <TableCell>{formatCpfMask(student.cpf)}</TableCell>
                 <TableCell>{student.email}</TableCell>
                 <TableCell>

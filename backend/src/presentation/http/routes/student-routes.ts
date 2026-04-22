@@ -9,6 +9,11 @@ export const createStudentRouter = (controller: StudentController): Router => {
   const router = Router();
   router.post("/", validateBody(studentBodySchema), asyncHandler(controller.create));
   router.get("/", asyncHandler(controller.list));
+  router.get(
+    "/:id/profile",
+    validateParams(studentIdParamSchema),
+    asyncHandler(controller.getProfile)
+  );
   router.get("/:id", validateParams(studentIdParamSchema), asyncHandler(controller.getById));
   router.put(
     "/:id",

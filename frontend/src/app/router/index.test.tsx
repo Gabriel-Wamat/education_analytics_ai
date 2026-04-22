@@ -25,6 +25,10 @@ vi.mock("@/pages/exam-dashboard-page", () => ({
   ExamDashboardPage: () => <div>ROUTE_EXAM_DASHBOARD_PAGE</div>
 }));
 
+vi.mock("@/pages/student-profile-page", () => ({
+  StudentProfilePage: () => <div>ROUTE_STUDENT_PROFILE_PAGE</div>
+}));
+
 vi.mock("@/pages/not-found-page", () => ({
   NotFoundPage: () => <div>ROUTE_NOT_FOUND_PAGE</div>
 }));
@@ -78,6 +82,11 @@ describe("AppRouter", () => {
   it("maps /dashboard", async () => {
     renderRoute("/dashboard");
     expect(await screen.findByText("ROUTE_EXAM_DASHBOARD_PAGE")).toBeInTheDocument();
+  });
+
+  it("maps /students/:studentId", async () => {
+    renderRoute("/students/student-1");
+    expect(await screen.findByText("ROUTE_STUDENT_PROFILE_PAGE")).toBeInTheDocument();
   });
 
   it("maps /exams/:examId", async () => {

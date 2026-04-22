@@ -75,6 +75,26 @@ describe("Pedagogical module routes (alunos/metas/turmas/avaliações/e-mail)", 
     assert.equal(get.status, 200);
     assert.equal(get.body.name, "Ana Souza");
 
+    const goal = await createGoal("Participação");
+    const classGroup = await createClass([created.id], [goal.id]);
+    const evaluationUpdate = await request(harness.app)
+      .put(`/classes/${classGroup.id}/evaluations`)
+      .send({ studentId: created.id, goalId: goal.id, level: "MPA" });
+    assert.equal(evaluationUpdate.status, 200);
+
+    const digest = await request(harness.app).post("/email/digest").send({});
+    assert.equal(digest.status, 200);
+
+    const profile = await request(harness.app).get(`/students/${created.id}/profile`);
+    assert.equal(profile.status, 200);
+    assert.equal(profile.body.student.name, "Ana Souza");
+    assert.equal(profile.body.summary.totalClasses, 1);
+    assert.equal(profile.body.summary.totalEvaluations, 1);
+    assert.equal(profile.body.summary.mpaCount, 1);
+    assert.equal(profile.body.classes.length, 1);
+    assert.equal(profile.body.evaluations.length, 1);
+    assert.equal(profile.body.emailLogs.length, 1);
+
     const update = await request(harness.app).put(`/students/${created.id}`).send({
       name: "Ana Souza",
       cpf: "52998224725",

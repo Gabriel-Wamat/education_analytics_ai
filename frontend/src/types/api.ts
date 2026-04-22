@@ -236,6 +236,61 @@ export interface Student {
   updatedAt: string;
 }
 
+export interface StudentProfileClassSummary {
+  id: string;
+  topic: string;
+  year: number;
+  semester: 1 | 2;
+  goalCount: number;
+  evaluationCount: number;
+}
+
+export interface StudentProfileEvaluationItem {
+  id: string;
+  classId: string;
+  classLabel: string;
+  goalId: string;
+  goalName: string;
+  level: EvaluationLevel;
+  score: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentProfileTimelinePoint {
+  label: string;
+  date: string;
+  averageScore: number;
+  attainmentPercentage: number;
+  evaluatedGoals: number;
+}
+
+export interface StudentProfileEmailLogItem {
+  id: string;
+  subject: string;
+  digestDate: string;
+  status: "sent" | "failed";
+  attemptedAt: string;
+  entriesCount: number;
+}
+
+export interface StudentProfileResponse {
+  student: Student;
+  summary: {
+    totalClasses: number;
+    totalGoals: number;
+    totalEvaluations: number;
+    manaCount: number;
+    mpaCount: number;
+    maCount: number;
+    attainmentPercentage: number;
+  };
+  classes: StudentProfileClassSummary[];
+  evaluations: StudentProfileEvaluationItem[];
+  timeline: StudentProfileTimelinePoint[];
+  emailLogs: StudentProfileEmailLogItem[];
+}
+
 export interface Goal {
   id: string;
   name: string;

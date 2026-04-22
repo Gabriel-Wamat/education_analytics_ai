@@ -1,5 +1,5 @@
 import { httpClient } from "@/services/http/client";
-import { Student } from "@/types/api";
+import { Student, StudentProfileResponse } from "@/types/api";
 
 export interface StudentFormValues {
   name: string;
@@ -18,6 +18,10 @@ export const studentsApi = {
   list: async (): Promise<Student[]> => {
     const response = await httpClient.get<Student[]>("/students");
     return ensureStudentArray(response.data);
+  },
+  getProfile: async (studentId: string): Promise<StudentProfileResponse> => {
+    const response = await httpClient.get<StudentProfileResponse>(`/students/${studentId}/profile`);
+    return response.data;
   },
   create: async (payload: StudentFormValues): Promise<Student> => {
     const response = await httpClient.post<Student>("/students", payload);

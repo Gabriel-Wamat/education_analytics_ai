@@ -25,6 +25,7 @@ import { UpdateQuestionUseCase } from "../../application/use-cases/update-questi
 import { CreateStudentUseCase } from "../../application/use-cases/create-student-use-case";
 import { DeleteStudentUseCase } from "../../application/use-cases/delete-student-use-case";
 import { GetStudentUseCase } from "../../application/use-cases/get-student-use-case";
+import { GetStudentProfileUseCase } from "../../application/use-cases/get-student-profile-use-case";
 import { ListStudentsUseCase } from "../../application/use-cases/list-students-use-case";
 import { UpdateStudentUseCase } from "../../application/use-cases/update-student-use-case";
 import { CreateGoalUseCase } from "../../application/use-cases/create-goal-use-case";
@@ -218,6 +219,13 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
     new CreateStudentUseCase(studentRepository),
     new ListStudentsUseCase(studentRepository),
     new GetStudentUseCase(studentRepository),
+    new GetStudentProfileUseCase(
+      studentRepository,
+      classGroupRepository,
+      evaluationRepository,
+      goalRepository,
+      emailLogRepository
+    ),
     new UpdateStudentUseCase(studentRepository),
     new DeleteStudentUseCase(
       studentRepository,

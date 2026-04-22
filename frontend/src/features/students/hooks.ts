@@ -1,14 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { studentsApi, StudentFormValues } from "@/services/api/students.api";
-import { Student } from "@/types/api";
+import { Student, StudentProfileResponse } from "@/types/api";
 
 export const studentsQueryKey = ["students"] as const;
+export const studentProfileQueryKey = (studentId: string) =>
+  ["students", studentId, "profile"] as const;
 
 export const useStudents = () =>
   useQuery<Student[]>({
     queryKey: studentsQueryKey,
     queryFn: studentsApi.list
+  });
+
+export const useStudentProfile = (studentId?: string) =>
+  useQuery<StudentProfileResponse>({
+    queryKey: studentId ? studentProfileQueryKey(studentId) : ["students", "profile", "missing"],
+    queryFn: () => studentsApi.getProfile(studentId as string),
+    enabled: Boolean(studentId)
   });
 
 export const useCreateStudent = () => {
