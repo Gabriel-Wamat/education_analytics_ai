@@ -40,6 +40,7 @@ import { ListEvaluationsByClassUseCase } from "../../application/use-cases/list-
 import { SetEvaluationUseCase } from "../../application/use-cases/set-evaluation-use-case";
 import { UpdateClassGroupUseCase } from "../../application/use-cases/update-class-group-use-case";
 import { SendEvaluationDigestUseCase } from "../../application/use-cases/send-evaluation-digest-use-case";
+import { SendExamBatchToClassUseCase } from "../../application/use-cases/send-exam-batch-to-class-use-case";
 import { ListEmailLogsUseCase } from "../../application/use-cases/list-email-logs-use-case";
 import { ILLMProviderService } from "../../application/services/llm-provider-service";
 import { createPrismaClient } from "../database/prisma/client";
@@ -202,6 +203,15 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
       pdfGeneratorService,
       csvService,
       artifactsBaseDir
+    ),
+    new SendExamBatchToClassUseCase(
+      examInstanceRepository,
+      examTemplateRepository,
+      classGroupRepository,
+      studentRepository,
+      emailLogRepository,
+      emailService,
+      clock
     )
   );
   const examController = new ExamController(

@@ -1,6 +1,7 @@
 import { httpClient } from "@/services/http/client";
 import {
   AlternativeIdentificationType,
+  ExamBatchEmailDispatchResponse,
   ExamBatchDetail,
   ExamBatchSummary,
   ExamHeaderMetadata,
@@ -33,6 +34,10 @@ export interface CreateExamTemplatePayload {
 
 export interface GenerateExamArtifactsPayload {
   quantity: number;
+}
+
+export interface SendExamBatchToClassPayload {
+  classId: string;
 }
 
 export const examTemplatesApi = {
@@ -79,6 +84,16 @@ export const examTemplatesApi = {
   },
   getBatchById: async (batchId: string): Promise<ExamBatchDetail> => {
     const response = await httpClient.get<ExamBatchDetail>(`/exam-batches/${batchId}`);
+    return response.data;
+  },
+  sendBatchToClass: async (
+    batchId: string,
+    payload: SendExamBatchToClassPayload
+  ): Promise<ExamBatchEmailDispatchResponse> => {
+    const response = await httpClient.post<ExamBatchEmailDispatchResponse>(
+      `/exam-batches/${batchId}/email-dispatch`,
+      payload
+    );
     return response.data;
   }
 };

@@ -119,6 +119,28 @@ export interface ExamBatchDetail {
   instances: ExamBatchInstanceDetail[];
 }
 
+export interface ExamBatchEmailDispatchAssignment {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  examCode: string;
+  artifactId: string;
+  downloadUrl: string;
+  sent: boolean;
+  error?: string;
+}
+
+export interface ExamBatchEmailDispatchResponse {
+  batchId: string;
+  classId: string;
+  classLabel: string;
+  studentsTargeted: number;
+  proofsAvailable: number;
+  emailsSent: number;
+  emailsFailed: number;
+  assignments: ExamBatchEmailDispatchAssignment[];
+}
+
 export interface GradedQuestionResult {
   questionPosition: number;
   originalQuestionId: string;

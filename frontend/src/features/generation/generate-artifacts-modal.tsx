@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Copy, Download, FileArchive, FolderOutput } from "lucide-react";
+import { Copy, Download, FileArchive, FolderOutput, Sparkles } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Field, FieldHint, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { SendExamBatchModal } from "@/features/exam-batches/send-exam-batch-modal";
 import { normalizeApiError } from "@/services/http/error";
 import { ExamTemplate, GenerateExamInstancesResponse } from "@/types/api";
 import { ArtifactViewModel } from "@/types/ui";
@@ -41,6 +42,7 @@ export const GenerateArtifactsModal = ({
   const [quantity, setQuantity] = useState("5");
   const [apiError, setApiError] = useState<string | null>(null);
   const [result, setResult] = useState<GenerateExamInstancesResponse | null>(null);
+  const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const generateMutation = useGenerateExamInstances(examTemplate.id);
 
   useEffect(() => {
@@ -135,6 +137,13 @@ export const GenerateArtifactsModal = ({
               </CardContent>
             </Card>
 
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setDispatchModalOpen(true)}>
+                <Sparkles className="h-4 w-4" />
+                Enviar lote por e-mail
+              </Button>
+            </div>
+
             <div className="space-y-3">
               {result.artifacts.map((artifact) => {
                 const item = toArtifactViewModel(artifact);
@@ -205,10 +214,19 @@ export const GenerateArtifactsModal = ({
           </div>
         ) : (
           <Alert tone="info">
-            Nesta primeira versão, os artefatos retornados pela API são exibidos com seus caminhos absolutos no servidor. O layout já está preparado para evoluir para downloads reais quando o backend expuser URLs navegáveis.
+            Gere o lote para receber os PDFs individuais, o CSV de gabarito e o disparo opcional por e-mail para uma turma já cadastrada.
           </Alert>
         )}
       </div>
+
+      {result ? (
+        <SendExamBatchModal
+          open={dispatchModalOpen}
+          onClose={() => setDispatchModalOpen(false)}
+          batchId={result.batchId}
+          proofsAvailable={result.quantity}
+        />
+      ) : null}
     </Modal>
   );
 };

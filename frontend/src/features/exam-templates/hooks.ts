@@ -3,7 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CreateExamTemplatePayload,
   examTemplatesApi,
-  GenerateExamArtifactsPayload
+  GenerateExamArtifactsPayload,
+  SendExamBatchToClassPayload
 } from "@/services/api/exam-templates.api";
 
 export const examTemplateKeys = {
@@ -64,3 +65,17 @@ export const useExamBatchById = (batchId: string, enabled = true) =>
     queryFn: () => examTemplatesApi.getBatchById(batchId),
     enabled: enabled && Boolean(batchId)
   });
+
+export const useSendExamBatchToClass = (batchId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (payload: SendExamBatchToClassPayload) =>
+      examTemplatesApi.sendBatchToClass(batchId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: examTemplateKeys.batchDetail(batchId)
+      });
+    }
+  });
+};

@@ -354,4 +354,93 @@ describe("Backend route contracts", { concurrency: 1 }, () => {
     const footerMatches = extractedPdfText.match(/Prova [A-Z0-9-]+ - Pagina \d+ de \d+/g) ?? [];
     assert.ok(footerMatches.length >= 2);
   });
+
+  it("dispatches a generated batch to a class with deterministic student-to-proof mapping", async () => {
+    const firstQuestionResponse = await request(harness.app)
+      .post("/questions")
+      .send(createQuestionPayload("Dispatch A"));
+    const secondQuestionResponse = await request(harness.app)
+      .post("/questions")
+      .send(createQuestionPayload("Dispatch B"));
+
+    const templateResponse = await request(harness.app)
+      .post("/exam-templates")
+      .send(
+        createExamTemplatePayload([firstQuestionResponse.body.id, secondQuestionResponse.body.id], {
+          title: "Prova por Email",
+          discipline: "Matemática",
+          teacher: "Prof. Email",
+          examDate: "2026-04-22"
+        })
+      );
+    assert.equal(templateResponse.status, 201);
+
+    const generationResponse = await request(harness.app)
+      .post(`/exam-templates/${templateResponse.body.id as string}/generate`)
+      .send({ quantity: 2 });
+    assert.equal(generationResponse.status, 201);
+
+    const firstStudentResponse = await request(harness.app).post("/students").send({
+      name: "Aluno 1",
+      cpf: "52998224725",
+      email: "aluno1@example.com"
+    });
+    const secondStudentResponse = await request(harness.app).post("/students").send({
+      name: "Aluno 2",
+      cpf: "16899535009",
+      email: "aluno2@example.com"
+    });
+    assert.equal(firstStudentResponse.status, 201);
+    assert.equal(secondStudentResponse.status, 201);
+
+    const goalResponse = await request(harness.app).post("/goals").send({ name: "Prova 1" });
+    assert.equal(goalResponse.status, 201);
+
+    const classResponse = await request(harness.app).post("/classes").send({
+      topic: "Turma Email",
+      year: 2026,
+      semester: 1,
+      studentIds: [firstStudentResponse.body.id, secondStudentResponse.body.id],
+      goalIds: [goalResponse.body.id]
+    });
+    assert.equal(classResponse.status, 201);
+
+    const dispatchResponse = await request(harness.app)
+      .post(`/exam-batches/${generationResponse.body.batchId as string}/email-dispatch`)
+      .send({ classId: classResponse.body.id });
+
+    assert.equal(dispatchResponse.status, 200);
+    assert.equal(dispatchResponse.body.emailsSent, 2);
+    assert.equal(dispatchResponse.body.assignments.length, 2);
+
+    const assignments = dispatchResponse.body.assignments as Array<{
+      studentEmail: string;
+      examCode: string;
+      downloadUrl: string;
+      sent: boolean;
+    }>;
+
+    assert.equal(assignments[0]?.studentEmail, "aluno1@example.com");
+    assert.equal(assignments[1]?.studentEmail, "aluno2@example.com");
+    assert.ok(assignments[0]?.examCode.localeCompare(assignments[1]?.examCode) < 0);
+    assert.ok(assignments.every((assignment) => assignment.sent === true));
+    assert.ok(
+      assignments.every((assignment) =>
+        assignment.downloadUrl.includes("/api/exam-batches/artifacts/pdf--")
+      )
+    );
+
+    const sentMessages = harness.emailService.getSent();
+    assert.equal(sentMessages.length, 2);
+    assert.ok(sentMessages.every((message) => message.subject.includes("Prova disponível")));
+
+    const emailHistoryResponse = await request(harness.app).get("/email/messages");
+    assert.equal(emailHistoryResponse.status, 200);
+    assert.equal(emailHistoryResponse.body.length, 2);
+    assert.ok(
+      emailHistoryResponse.body.every((entry: { subject: string }) =>
+        entry.subject.includes("Prova disponível")
+      )
+    );
+  });
 });

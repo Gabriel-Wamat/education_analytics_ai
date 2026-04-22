@@ -19,6 +19,7 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { GenerateArtifactsModal } from "@/features/generation/generate-artifacts-modal";
+import { SendExamBatchModal } from "@/features/exam-batches/send-exam-batch-modal";
 import {
   useExamBatchById,
   useExamTemplateBatches,
@@ -59,6 +60,7 @@ export const ExamBankPage = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
 
   const filteredTemplates = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -335,10 +337,18 @@ export const ExamBankPage = () => {
             {selectedBatch ? (
               <Card>
                 <CardHeader>
-                  <h2 className="text-xl font-bold text-slate-800">Artefatos e gabaritos</h2>
-                  <p className="text-sm text-slate-600">
-                    Download direto dos PDFs e do CSV do lote, além da leitura do gabarito por prova.
-                  </p>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-800">Artefatos e gabaritos</h2>
+                      <p className="text-sm text-slate-600">
+                        Download direto dos PDFs e do CSV do lote, além da leitura do gabarito por prova.
+                      </p>
+                    </div>
+                    <Button variant="primary" size="sm" onClick={() => setDispatchModalOpen(true)}>
+                      <Sparkles className="h-4 w-4" />
+                      Enviar para turma
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {batchDetailQuery.isLoading ? (
@@ -464,6 +474,15 @@ export const ExamBankPage = () => {
           open={generateModalOpen}
           examTemplate={selectedTemplate}
           onClose={() => setGenerateModalOpen(false)}
+        />
+      ) : null}
+
+      {selectedBatch && batchDetailQuery.data ? (
+        <SendExamBatchModal
+          open={dispatchModalOpen}
+          onClose={() => setDispatchModalOpen(false)}
+          batchId={selectedBatch.id}
+          proofsAvailable={batchDetailQuery.data.quantity}
         />
       ) : null}
     </div>

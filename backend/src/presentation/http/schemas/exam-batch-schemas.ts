@@ -12,3 +12,7 @@ export const examArtifactIdParamSchema = z.object({
       "O ID do artefato precisa ser um identificador válido."
     )
 });
+
+export const examBatchEmailDispatchBodySchema = z.object({
+  classId: z.string().uuid("O ID da turma precisa ser um UUID válido.")
+});

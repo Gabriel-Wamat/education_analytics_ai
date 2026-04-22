@@ -3,10 +3,11 @@ import { Router } from "express";
 import { ExamBatchController } from "../controllers/exam-batch-controller";
 import {
   examArtifactIdParamSchema,
+  examBatchEmailDispatchBodySchema,
   examBatchIdParamSchema
 } from "../schemas/exam-batch-schemas";
 import { asyncHandler } from "../utils/async-handler";
-import { validateParams } from "../utils/validate-request";
+import { validateBody, validateParams } from "../utils/validate-request";
 
 export const createExamBatchRouter = (examBatchController: ExamBatchController): Router => {
   const router = Router();
@@ -21,6 +22,13 @@ export const createExamBatchRouter = (examBatchController: ExamBatchController):
     "/:batchId",
     validateParams(examBatchIdParamSchema),
     asyncHandler(examBatchController.getById)
+  );
+
+  router.post(
+    "/:batchId/email-dispatch",
+    validateParams(examBatchIdParamSchema),
+    validateBody(examBatchEmailDispatchBodySchema),
+    asyncHandler(examBatchController.sendToClass)
   );
 
   return router;
