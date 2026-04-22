@@ -7,11 +7,15 @@ import {
 } from "react-router-dom";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { ClassDetailPage } from "@/pages/class-detail-page";
+import { ClassesPage } from "@/pages/classes-page";
 import { ExamDashboardPage } from "@/pages/exam-dashboard-page";
 import { ExamWizardPage } from "@/pages/exam-wizard-page";
+import { GoalsPage } from "@/pages/goals-page";
 import { GradingPage } from "@/pages/grading-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { QuestionsPage } from "@/pages/questions-page";
+import { StudentsPage } from "@/pages/students-page";
 
 export const appRoutes: RouteObject[] = [
   {
@@ -41,6 +45,22 @@ export const appRoutes: RouteObject[] = [
       {
         path: "exams/:examId",
         element: <ExamDashboardPage />
+      },
+      {
+        path: "students",
+        element: <StudentsPage />
+      },
+      {
+        path: "goals",
+        element: <GoalsPage />
+      },
+      {
+        path: "classes",
+        element: <ClassesPage />
+      },
+      {
+        path: "classes/:classId",
+        element: <ClassDetailPage />
       },
       {
         path: "*",

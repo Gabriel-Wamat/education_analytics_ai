@@ -15,3 +15,11 @@ frontend/*.d.ts
 .vercel
 .env.vercel
 AGENTS.md
+data/
+smoke-*.ts
+
+# LibreOffice/Office lock files
+.~lock.*#
+
+# LibreOffice/Office lock files
+.~lock.*#

@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
+  BookOpenCheck,
   ClipboardList,
   FileCheck2,
+  Target,
+  UsersRound,
   WandSparkles,
   X
 } from "lucide-react";
@@ -50,10 +53,65 @@ const navigationSections: Array<{
         icon: BarChart3
       }
     ]
+  },
+  {
+    label: "Gestão pedagógica",
+    items: [
+      {
+        to: "/students",
+        label: "Alunos",
+        description: "Cadastro e dados",
+        icon: UsersRound
+      },
+      {
+        to: "/goals",
+        label: "Metas",
+        description: "Competências avaliadas",
+        icon: Target
+      },
+      {
+        to: "/classes",
+        label: "Turmas",
+        description: "Avaliações e resumos",
+        icon: BookOpenCheck
+      }
+    ]
   }
 ];
 
 const routeMeta = [
+  {
+    pattern: "/students",
+    breadcrumb: "Gestão pedagógica",
+    title: "Alunos",
+    description: "Cadastro de alunos com CPF e e-mail, usados nas turmas e notificações diárias.",
+    primaryAction: { label: "Voltar às turmas", to: "/classes", variant: "secondary" as const },
+    secondaryAction: { label: "Metas", to: "/goals", variant: "ghost" as const }
+  },
+  {
+    pattern: "/goals",
+    breadcrumb: "Gestão pedagógica",
+    title: "Metas pedagógicas",
+    description: "Cadastro das competências avaliadas nas turmas.",
+    primaryAction: { label: "Turmas", to: "/classes", variant: "secondary" as const },
+    secondaryAction: { label: "Alunos", to: "/students", variant: "ghost" as const }
+  },
+  {
+    pattern: "/classes",
+    breadcrumb: "Gestão pedagógica",
+    title: "Turmas",
+    description: "Organize alunos e metas por turma, ano e semestre.",
+    primaryAction: { label: "Alunos", to: "/students", variant: "secondary" as const },
+    secondaryAction: { label: "Metas", to: "/goals", variant: "ghost" as const }
+  },
+  {
+    pattern: "/classes/:classId",
+    breadcrumb: "Gestão pedagógica",
+    title: "Avaliações da turma",
+    description: "Registre o progresso (MANA/MPA/MA) de cada aluno nas metas. Alterações disparam o resumo diário.",
+    primaryAction: { label: "Voltar para turmas", to: "/classes", variant: "secondary" as const },
+    secondaryAction: { label: "Alunos", to: "/students", variant: "ghost" as const }
+  },
   {
     pattern: "/dashboard",
     breadcrumb: "Analytics educacional",
@@ -101,6 +159,13 @@ const isNavigationItemActive = (pathname: string, path: string) => {
     return Boolean(
       matchPath({ path: "/dashboard", end: true }, pathname) ||
         matchPath({ path: "/exams/:examId", end: true }, pathname)
+    );
+  }
+
+  if (path === "/classes") {
+    return Boolean(
+      matchPath({ path: "/classes", end: true }, pathname) ||
+        matchPath({ path: "/classes/:classId", end: true }, pathname)
     );
   }
 

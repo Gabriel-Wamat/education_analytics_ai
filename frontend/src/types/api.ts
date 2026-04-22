@@ -176,3 +176,69 @@ export interface ApiErrorPayload {
   message: string;
   details?: string[];
 }
+
+// ================================================================
+// Student / Class / Evaluation / Email (novos módulos)
+// ================================================================
+
+export type EvaluationLevel = "MANA" | "MPA" | "MA";
+
+export interface Student {
+  id: string;
+  name: string;
+  cpf: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClassGroup {
+  id: string;
+  topic: string;
+  year: number;
+  semester: 1 | 2;
+  studentIds: string[];
+  goalIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Evaluation {
+  id: string;
+  classId: string;
+  studentId: string;
+  goalId: string;
+  level: EvaluationLevel;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ClassEvaluationsResponse {
+  classId: string;
+  studentIds: string[];
+  goalIds: string[];
+  evaluations: Evaluation[];
+}
+
+export interface EmailDigestRunResult {
+  digestDate: string;
+  emailsSent: number;
+  entriesProcessed: number;
+  emailsFailed: number;
+  digestsByStudent: Array<{
+    studentId: string;
+    email: string;
+    name: string;
+    entries: number;
+    sent: boolean;
+    error?: string;
+  }>;
+}

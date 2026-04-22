@@ -1,19 +1,39 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
+import crypto from "node:crypto";
 
 import { PrismaClient } from "@prisma/client";
 import { Express } from "express";
 
 import { createPrismaClient } from "../../backend/src/infrastructure/database/prisma/client";
 import { createApp } from "../../backend/src/infrastructure/http/create-app";
+import { InMemoryEmailService } from "../../backend/src/infrastructure/services/in-memory-email-service";
+import { IClock } from "../../backend/src/application/services/clock";
 import { FakeLLMProviderService } from "../acceptance/support/fake-llm-provider";
 import { setupTestDatabase } from "../acceptance/support/setup-test-database";
+
+export class FixedClock implements IClock {
+  constructor(private current: Date = new Date("2026-04-22T12:00:00.000Z")) {}
+  now(): Date {
+    return new Date(this.current);
+  }
+  set(value: Date): void {
+    this.current = value;
+  }
+  advance(ms: number): void {
+    this.current = new Date(this.current.getTime() + ms);
+  }
+}
 
 export interface BackendTestHarness {
   app: Express;
   prismaClient: PrismaClient;
   llmProviderService: FakeLLMProviderService;
+  emailService: InMemoryEmailService;
+  clock: FixedClock;
   artifactsBaseDir: string;
+  jsonStorageDir: string;
   reset: () => Promise<void>;
   close: () => Promise<void>;
 }
@@ -25,35 +45,51 @@ export const createBackendTestHarness = async (): Promise<BackendTestHarness> =>
   await prismaClient.$connect();
 
   const llmProviderService = new FakeLLMProviderService();
+  const emailService = new InMemoryEmailService();
+  const clock = new FixedClock();
   const artifactsBaseDir = path.resolve(process.cwd(), "output/exam-batches-test");
+  const jsonStorageDir = path.join(
+    os.tmpdir(),
+    `ea-test-json-${crypto.randomBytes(6).toString("hex")}`
+  );
+  await fs.mkdir(jsonStorageDir, { recursive: true });
+
   const app = createApp({
     prismaClient,
     llmProviderService,
-    artifactsBaseDir
+    artifactsBaseDir,
+    emailService,
+    clock,
+    jsonStorageDir
   });
 
   const reset = async (): Promise<void> => {
     llmProviderService.reset();
+    emailService.reset();
+    clock.set(new Date("2026-04-22T12:00:00.000Z"));
     await prismaClient.examReport.deleteMany();
     await prismaClient.examInstance.deleteMany();
     await prismaClient.examTemplate.deleteMany();
     await prismaClient.option.deleteMany();
     await prismaClient.question.deleteMany();
-    await fs.rm(artifactsBaseDir, {
-      force: true,
-      recursive: true
-    });
+    await fs.rm(artifactsBaseDir, { force: true, recursive: true });
+    await fs.rm(jsonStorageDir, { force: true, recursive: true });
+    await fs.mkdir(jsonStorageDir, { recursive: true });
   };
 
   const close = async (): Promise<void> => {
     await prismaClient.$disconnect();
+    await fs.rm(jsonStorageDir, { force: true, recursive: true });
   };
 
   return {
     app,
     prismaClient,
     llmProviderService,
+    emailService,
+    clock,
     artifactsBaseDir,
+    jsonStorageDir,
     reset,
     close
   };
