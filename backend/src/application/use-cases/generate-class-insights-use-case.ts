@@ -37,4 +37,31 @@ export class GenerateClassInsightsUseCase {
       throw error;
     }
   }
+
+  async executeLatest(): Promise<ClassInsightsResponse> {
+    const metrics = await this.getDashboardMetricsUseCase.executeLatest();
+
+    try {
+      const insights = await this.llmProviderService.generateInsights(metrics);
+
+      return {
+        examId: metrics.examId,
+        metrics,
+        insights,
+        generatedAt: new Date().toISOString()
+      };
+    } catch (error) {
+      if (error instanceof LLMTimeoutError || error instanceof LLMProviderError) {
+        return {
+          examId: metrics.examId,
+          metrics,
+          insights: null,
+          warning: INSIGHTS_UNAVAILABLE_WARNING,
+          generatedAt: new Date().toISOString()
+        };
+      }
+
+      throw error;
+    }
+  }
 }

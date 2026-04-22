@@ -10,7 +10,12 @@ import { QuestionAccuracyBarChart } from "@/components/charts/question-accuracy-
 import { UnitPerformanceLineChart } from "@/components/charts/unit-performance-line-chart";
 import { InsightsPanel } from "@/features/dashboard/insights-panel";
 import { MetricsSummaryCards } from "@/features/dashboard/metrics-summary-cards";
-import { useExamInsights, useExamMetrics } from "@/features/dashboard/hooks";
+import {
+  useExamInsights,
+  useExamMetrics,
+  useLatestExamInsights,
+  useLatestExamMetrics
+} from "@/features/dashboard/hooks";
 import {
   getBarChartSeries,
   getDonutChartGroups,
@@ -41,13 +46,19 @@ const buildEmptyMetrics = (examId?: string): DashboardMetricsResponse => ({
 
 export const ExamDashboardPage = () => {
   const { examId = "" } = useParams();
-  const metricsQuery = useExamMetrics(examId);
-  const insightsQuery = useExamInsights(examId);
   const hasNoExamSelected = examId.length === 0;
+  const latestMetricsQuery = useLatestExamMetrics(hasNoExamSelected);
+  const latestInsightsQuery = useLatestExamInsights(hasNoExamSelected);
+  const examMetricsQuery = useExamMetrics(examId);
+  const examInsightsQuery = useExamInsights(examId);
+  const metricsQuery = hasNoExamSelected ? latestMetricsQuery : examMetricsQuery;
+  const insightsQuery = hasNoExamSelected ? latestInsightsQuery : examInsightsQuery;
   const hasNoMetricsYet =
     metricsQuery.isError && isApiErrorWithStatus(metricsQuery.error, 404);
 
-  const metrics = metricsQuery.data ?? (hasNoExamSelected || hasNoMetricsYet ? buildEmptyMetrics(examId) : null);
+  const metrics =
+    metricsQuery.data ??
+    (hasNoMetricsYet ? buildEmptyMetrics(examId) : null);
   const lineData = useMemo(
     () => (metrics ? getLineChartSeries(metrics) : []),
     [metrics]
@@ -72,7 +83,7 @@ export const ExamDashboardPage = () => {
         description="Leitura quantitativa e qualitativa do relatório corrigido, com gráficos prontos para tomada de decisão pedagógica. Quando ainda não houver dados, o dashboard permanece disponível com estruturas vazias."
       />
 
-      {metricsQuery.isLoading && !hasNoExamSelected ? (
+      {metricsQuery.isLoading ? (
         <div className="space-y-4">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-[340px] w-full" />
@@ -80,7 +91,7 @@ export const ExamDashboardPage = () => {
         </div>
       ) : null}
 
-      {hasNoExamSelected ? (
+      {hasNoExamSelected && hasNoMetricsYet ? (
         <Alert tone="info">
           O dashboard já está disponível. Assim que você corrigir uma turma, os gráficos serão preenchidos automaticamente.
         </Alert>
@@ -106,21 +117,19 @@ export const ExamDashboardPage = () => {
               isLoading={!hasNoExamSelected && !hasNoMetricsYet && insightsQuery.isLoading}
               isError={!hasNoExamSelected && !hasNoMetricsYet && insightsQuery.isError}
               warning={
-                hasNoExamSelected
-                  ? "Os insights serão carregados quando houver um relatório corrigido."
-                  : hasNoMetricsYet
-                    ? "Ainda não há dados suficientes para gerar insights pedagógicos."
-                    : insightsQuery.data?.warning
+                hasNoMetricsYet
+                  ? hasNoExamSelected
+                    ? "Os insights serão carregados quando houver um relatório corrigido."
+                    : "Ainda não há dados suficientes para gerar insights pedagógicos."
+                  : insightsQuery.data?.warning
               }
               insights={
-                hasNoExamSelected || hasNoMetricsYet
+                hasNoMetricsYet
                   ? null
                   : insightsQuery.data?.insights ?? null
               }
               onRetry={() => {
-                if (!hasNoExamSelected) {
-                  void insightsQuery.refetch();
-                }
+                void insightsQuery.refetch();
               }}
             />
           </div>

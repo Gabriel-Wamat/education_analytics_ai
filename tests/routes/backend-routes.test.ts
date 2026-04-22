@@ -245,10 +245,18 @@ describe("Backend route contracts", { concurrency: 1 }, () => {
     assert.equal(metricsResponse.body.examId, examId);
     assert.equal(metricsResponse.body.lineChartData[0].unit, 1);
 
+    const latestMetricsResponse = await request(harness.app).get("/exams/latest/metrics");
+    assert.equal(latestMetricsResponse.status, 200);
+    assert.equal(latestMetricsResponse.body.examId, examId);
+
     const insightsResponse = await request(harness.app).get(`/exams/${examId}/insights`);
     assert.equal(insightsResponse.status, 200);
     assert.equal(insightsResponse.body.examId, examId);
     assert.match(insightsResponse.body.insights, /Insights/i);
+
+    const latestInsightsResponse = await request(harness.app).get("/exams/latest/insights");
+    assert.equal(latestInsightsResponse.status, 200);
+    assert.equal(latestInsightsResponse.body.examId, examId);
 
     const deleteResponse = await request(harness.app).delete(`/exam-templates/${examTemplateId}`);
     assert.equal(deleteResponse.status, 204);

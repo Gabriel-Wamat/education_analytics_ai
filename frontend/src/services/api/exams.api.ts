@@ -31,8 +31,16 @@ export const examsApi = {
     const response = await httpClient.get<DashboardMetricsResponse>(`/exams/${examId}/metrics`);
     return response.data;
   },
+  getLatestMetrics: async (): Promise<DashboardMetricsResponse> => {
+    const response = await httpClient.get<DashboardMetricsResponse>("/exams/latest/metrics");
+    return response.data;
+  },
   getInsights: async (examId: string): Promise<ClassInsightsResponse> => {
     const response = await httpClient.get<ClassInsightsResponse>(`/exams/${examId}/insights`);
+    return response.data;
+  },
+  getLatestInsights: async (): Promise<ClassInsightsResponse> => {
+    const response = await httpClient.get<ClassInsightsResponse>("/exams/latest/insights");
     return response.data;
   }
 };

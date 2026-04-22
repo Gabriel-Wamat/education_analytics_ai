@@ -97,4 +97,15 @@ export class PrismaExamReportRepository implements IExamReportRepository {
 
     return examReport ? toDomainExamReport(examReport) : null;
   }
+
+  async findLatest(): Promise<ExamReport | null> {
+    const examReport = await this.prismaClient.examReport.findFirst({
+      orderBy: [
+        { createdAt: "desc" },
+        { updatedAt: "desc" }
+      ]
+    });
+
+    return examReport ? toDomainExamReport(examReport) : null;
+  }
 }

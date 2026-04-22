@@ -45,8 +45,18 @@ export class ExamController {
     response.status(200).json(metrics);
   };
 
+  getLatestMetrics = async (_request: Request, response: Response): Promise<void> => {
+    const metrics = await this.getDashboardMetricsUseCase.executeLatest();
+    response.status(200).json(metrics);
+  };
+
   getInsights = async (request: Request, response: Response): Promise<void> => {
     const insights = await this.generateClassInsightsUseCase.execute(request.params.id as string);
+    response.status(200).json(insights);
+  };
+
+  getLatestInsights = async (_request: Request, response: Response): Promise<void> => {
+    const insights = await this.generateClassInsightsUseCase.executeLatest();
     response.status(200).json(insights);
   };
 }

@@ -23,4 +23,13 @@ export class GetDashboardMetricsUseCase {
 
     return aggregateDashboardMetrics(examReport, examTemplate);
   }
+
+  async executeLatest(): Promise<DashboardMetricsResponse> {
+    const latestExamReport = await this.examReportRepository.findLatest();
+    if (!latestExamReport) {
+      throw new NotFoundError("Nenhum relatório corrigido foi encontrado.");
+    }
+
+    return this.execute(latestExamReport.id);
+  }
 }

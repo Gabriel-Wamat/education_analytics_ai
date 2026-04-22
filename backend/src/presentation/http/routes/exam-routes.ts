@@ -22,6 +22,10 @@ export const createExamRouter = (examController: ExamController): Router => {
     validateBody(gradeExamBodySchema),
     asyncHandler(examController.grade)
   );
+  router.get("/latest/metrics", asyncHandler(examController.getLatestMetrics));
+  router.get("/latest/insights", asyncHandler(examController.getLatestInsights));
+  router.get("/latest-report/metrics", asyncHandler(examController.getLatestMetrics));
+  router.get("/latest-report/insights", asyncHandler(examController.getLatestInsights));
   router.get(
     "/:id/metrics",
     validateParams(examIdParamSchema),
