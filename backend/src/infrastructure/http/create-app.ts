@@ -14,7 +14,10 @@ import { DeleteQuestionUseCase } from "../../application/use-cases/delete-questi
 import { GenerateExamInstancesUseCase } from "../../application/use-cases/generate-exam-instances-use-case";
 import { GetDashboardMetricsUseCase } from "../../application/use-cases/get-dashboard-metrics-use-case";
 import { GetExamTemplateUseCase } from "../../application/use-cases/get-exam-template-use-case";
+import { GetExamBatchUseCase } from "../../application/use-cases/get-exam-batch-use-case";
+import { GetExamArtifactDownloadUseCase } from "../../application/use-cases/get-exam-artifact-download-use-case";
 import { GetQuestionUseCase } from "../../application/use-cases/get-question-use-case";
+import { ListExamTemplateBatchesUseCase } from "../../application/use-cases/list-exam-template-batches-use-case";
 import { ListExamTemplatesUseCase } from "../../application/use-cases/list-exam-templates-use-case";
 import { ListQuestionsUseCase } from "../../application/use-cases/list-questions-use-case";
 import { UpdateExamTemplateUseCase } from "../../application/use-cases/update-exam-template-use-case";
@@ -36,6 +39,7 @@ import { ListEvaluationsByClassUseCase } from "../../application/use-cases/list-
 import { SetEvaluationUseCase } from "../../application/use-cases/set-evaluation-use-case";
 import { UpdateClassGroupUseCase } from "../../application/use-cases/update-class-group-use-case";
 import { SendEvaluationDigestUseCase } from "../../application/use-cases/send-evaluation-digest-use-case";
+import { ListEmailLogsUseCase } from "../../application/use-cases/list-email-logs-use-case";
 import { ILLMProviderService } from "../../application/services/llm-provider-service";
 import { createPrismaClient } from "../database/prisma/client";
 import { PrismaExamInstanceRepository } from "../repositories/prisma-exam-instance-repository";
@@ -47,6 +51,7 @@ import { JsonGoalRepository } from "../repositories/json/json-goal-repository";
 import { JsonClassGroupRepository } from "../repositories/json/json-class-group-repository";
 import { JsonEvaluationRepository } from "../repositories/json/json-evaluation-repository";
 import { JsonEmailDigestRepository } from "../repositories/json/json-email-digest-repository";
+import { JsonEmailLogRepository } from "../repositories/json/json-email-log-repository";
 import { ConsoleEmailService } from "../services/console-email-service";
 import { CsvFileService } from "../services/csv-file-service";
 import { OpenAIProviderService } from "../services/openai-provider-service";
@@ -54,6 +59,7 @@ import { PdfKitPdfGeneratorService } from "../services/pdfkit-pdf-generator-serv
 import { SmtpEmailService } from "../services/smtp-email-service";
 import { ExamController } from "../../presentation/http/controllers/exam-controller";
 import { ExamTemplateController } from "../../presentation/http/controllers/exam-template-controller";
+import { ExamBatchController } from "../../presentation/http/controllers/exam-batch-controller";
 import { QuestionController } from "../../presentation/http/controllers/question-controller";
 import { StudentController } from "../../presentation/http/controllers/student-controller";
 import { GoalController } from "../../presentation/http/controllers/goal-controller";
@@ -62,6 +68,7 @@ import { EmailDigestController } from "../../presentation/http/controllers/email
 import { errorHandler } from "../../presentation/http/middlewares/error-handler";
 import { createExamRouter } from "../../presentation/http/routes/exam-routes";
 import { createExamTemplateRouter } from "../../presentation/http/routes/exam-template-routes";
+import { createExamBatchRouter } from "../../presentation/http/routes/exam-batch-routes";
 import { createQuestionRouter } from "../../presentation/http/routes/question-routes";
 import { createStudentRouter } from "../../presentation/http/routes/student-routes";
 import { createGoalRouter } from "../../presentation/http/routes/goal-routes";
@@ -155,6 +162,9 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
   const emailDigestRepository = new JsonEmailDigestRepository(
     path.join(jsonStorageDir, "email-digest-queue.json")
   );
+  const emailLogRepository = new JsonEmailLogRepository(
+    path.join(jsonStorageDir, "email-log.json")
+  );
 
   const questionController = new QuestionController(
     new CreateQuestionUseCase(questionRepository),
@@ -168,11 +178,26 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
     new CreateExamTemplateUseCase(examTemplateRepository, questionRepository),
     new ListExamTemplatesUseCase(examTemplateRepository),
     new GetExamTemplateUseCase(examTemplateRepository),
+    new ListExamTemplateBatchesUseCase(examTemplateRepository, examInstanceRepository),
     new UpdateExamTemplateUseCase(examTemplateRepository, questionRepository),
     new DeleteExamTemplateUseCase(examTemplateRepository),
     new GenerateExamInstancesUseCase(
       examTemplateRepository,
       examInstanceRepository,
+      pdfGeneratorService,
+      csvService,
+      artifactsBaseDir
+    )
+  );
+  const examBatchController = new ExamBatchController(
+    new ListExamTemplateBatchesUseCase(examTemplateRepository, examInstanceRepository),
+    new GetExamBatchUseCase(
+      examInstanceRepository,
+      examTemplateRepository
+    ),
+    new GetExamArtifactDownloadUseCase(
+      examInstanceRepository,
+      examTemplateRepository,
       pdfGeneratorService,
       csvService,
       artifactsBaseDir
@@ -237,11 +262,13 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
     studentRepository,
     classGroupRepository,
     goalRepository,
+    emailLogRepository,
     emailService,
     clock
   );
   const emailDigestController = new EmailDigestController(
     sendEvaluationDigestUseCase,
+    new ListEmailLogsUseCase(emailLogRepository),
     defaultFromAddress
   );
 
@@ -274,6 +301,7 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
 
   app.use("/questions", createQuestionRouter(questionController));
   app.use("/exam-templates", createExamTemplateRouter(examTemplateController));
+  app.use("/exam-batches", createExamBatchRouter(examBatchController));
   app.use("/exams", createExamRouter(examController));
   app.use("/students", createStudentRouter(studentController));
   app.use("/goals", createGoalRouter(goalController));

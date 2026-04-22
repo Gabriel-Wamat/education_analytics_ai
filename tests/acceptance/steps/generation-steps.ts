@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-
 import { Then, When } from "@cucumber/cucumber";
 import request from "supertest";
 
@@ -24,10 +22,12 @@ interface GeneratedExamInstancePayload {
 }
 
 interface GeneratedArtifactPayload {
+  id: string;
   kind: string;
   fileName: string;
-  absolutePath: string;
+  absolutePath: string | null;
   mimeType: string;
+  downloadUrl: string;
 }
 
 const parseCsv = (content: string): string[][] =>
@@ -70,8 +70,10 @@ When(
       this.batchId = payload.batchId;
       this.generatedInstances = payload.instances;
       this.generatedArtifacts = payload.artifacts;
-      this.answerKeyArtifactPath = payload.artifacts.find((artifact) => artifact.kind === "CSV")
-        ?.absolutePath;
+      const answerKeyArtifact = payload.artifacts.find((artifact) => artifact.kind === "CSV");
+      this.answerKeyArtifactPath = answerKeyArtifact?.absolutePath ?? undefined;
+      this.answerKeyArtifactId = answerKeyArtifact?.id;
+      this.answerKeyDownloadUrl = answerKeyArtifact?.downloadUrl;
     }
   }
 );
@@ -115,21 +117,38 @@ Then(
 );
 
 Then("um arquivo de gabarito CSV deve ter sido gerado", async function (this: AcceptanceWorld) {
-  if (!this.answerKeyArtifactPath) {
+  const { app } = getTestContext();
+
+  if (!this.answerKeyArtifactId) {
     throw new Error("Nenhum artefato CSV de gabarito foi retornado.");
   }
 
-  await fs.access(this.answerKeyArtifactPath);
+  const response = await request(app).get(
+    `/exam-batches/artifacts/${this.answerKeyArtifactId}/download`
+  );
+
+  if (response.status !== 200) {
+    throw new Error(`Falha ao baixar o gabarito CSV. Status recebido: ${response.status}.`);
+  }
 });
 
 Then(
   "o gabarito CSV deve corresponder às respostas corretas das instâncias geradas",
   async function (this: AcceptanceWorld) {
-    if (!this.answerKeyArtifactPath) {
-      throw new Error("Nenhum caminho de gabarito CSV foi registrado.");
+    const { app } = getTestContext();
+
+    if (!this.answerKeyArtifactId) {
+      throw new Error("Nenhum artefato de gabarito CSV foi registrado.");
     }
 
-    const csvContent = await fs.readFile(this.answerKeyArtifactPath, "utf-8");
+    const response = await request(app).get(
+      `/exam-batches/artifacts/${this.answerKeyArtifactId}/download`
+    );
+    if (response.status !== 200) {
+      throw new Error(`Falha ao baixar o gabarito CSV. Status recebido: ${response.status}.`);
+    }
+
+    const csvContent = response.text;
     const [header, ...rows] = parseCsv(csvContent);
 
     const expectedQuestionCount =

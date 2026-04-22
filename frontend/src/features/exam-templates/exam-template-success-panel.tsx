@@ -1,8 +1,9 @@
 import { Copy, FileSearch, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, getButtonClassName } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Field, FieldHint, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -39,13 +40,16 @@ export const ExamTemplateSuccessPanel = ({
             <StatusBadge tone="success">Prova criada</StatusBadge>
             <h2 className="text-2xl font-bold text-slate-800">Modelo pronto para geração</h2>
             <p className="max-w-2xl text-base text-slate-600">
-              O backend confirmou a criação do template. Agora você pode gerar os artefatos ou consultar o snapshot diretamente por ID.
+              O backend confirmou a criação do template. Agora você pode gerar os artefatos ou abrir o Banco de Provas para acompanhar os lotes e gabaritos.
             </p>
           </div>
           <div className="flex gap-3">
             <Button variant="secondary" size="md" onClick={onCreateAnother}>
               Criar outra
             </Button>
+            <Link to="/exam-bank" className={getButtonClassName({ variant: "secondary", size: "md" })}>
+              Banco de Provas
+            </Link>
             <Button variant="success" onClick={onGenerateArtifacts}>
               <Sparkles className="h-4 w-4" />
               Gerar PDFs e CSV
@@ -84,7 +88,7 @@ export const ExamTemplateSuccessPanel = ({
         <CardHeader>
           <h3 className="text-xl font-bold text-slate-800">Consultar por ID</h3>
           <p className="text-base text-slate-600">
-            Como ainda não existe listagem de provas no backend, esta área usa `GET /exam-templates/:id`.
+            Consulta direta ao template via `GET /exam-templates/:id`, útil para checagem rápida ou compartilhamento do identificador.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

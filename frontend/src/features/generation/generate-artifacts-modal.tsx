@@ -23,6 +23,16 @@ const toArtifactViewModel = (artifact: GenerateExamInstancesResponse["artifacts"
   ...artifact
 });
 
+const triggerArtifactDownload = (downloadUrl: string) => {
+  const link = document.createElement("a");
+  link.href = downloadUrl;
+  link.rel = "noreferrer";
+  link.target = "_blank";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+};
+
 export const GenerateArtifactsModal = ({
   open,
   examTemplate,
@@ -144,32 +154,43 @@ export const GenerateArtifactsModal = ({
                             </StatusBadge>
                           </div>
                           <div className="text-sm text-slate-500">{item.mimeType}</div>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <FolderOutput className="h-4 w-4" />
-                            {item.absolutePath}
-                          </div>
+                          {item.absolutePath ? (
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <FolderOutput className="h-4 w-4" />
+                              {item.absolutePath}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-slate-500">
+                              Artefato persistido e disponível para download.
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={async () => {
-                            await navigator.clipboard.writeText(item.absolutePath);
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                          Copiar caminho
-                        </Button>
+                        {item.absolutePath ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(item.absolutePath ?? "");
+                            }}
+                          >
+                            <Copy className="h-4 w-4" />
+                            Copiar caminho
+                          </Button>
+                        ) : null}
                         <Button
                           variant="highlight"
                           size="sm"
                           disabled={!item.downloadUrl}
+                          onClick={() =>
+                            item.downloadUrl ? triggerArtifactDownload(item.downloadUrl) : undefined
+                          }
                           title={
                             item.downloadUrl
                               ? "Baixar artefato"
-                              : "Download disponível quando o backend expuser URL/ZIP."
+                              : "Artefato indisponível para download."
                           }
                         >
                           <Download className="h-4 w-4" />

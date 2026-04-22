@@ -16,6 +16,11 @@ export const createExamTemplateRouter = (
 
   router.post("/", validateBody(examTemplateBodySchema), asyncHandler(examTemplateController.create));
   router.get("/", asyncHandler(examTemplateController.list));
+  router.get(
+    "/:id/batches",
+    validateParams(examTemplateIdParamSchema),
+    asyncHandler(examTemplateController.listBatches)
+  );
   router.post(
     "/:id/generate",
     validateParams(examTemplateIdParamSchema),

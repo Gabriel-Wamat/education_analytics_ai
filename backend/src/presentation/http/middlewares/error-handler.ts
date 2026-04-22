@@ -5,7 +5,7 @@ import { ApplicationError } from "../../../application/errors/application-error"
 
 export const errorHandler = (
   error: Error,
-  _request: Request,
+  request: Request,
   response: Response,
   _next: NextFunction
 ): void => {
@@ -24,6 +24,11 @@ export const errorHandler = (
     });
     return;
   }
+
+  console.error(
+    `[http-error] ${request.method} ${request.originalUrl}`,
+    error instanceof Error ? { message: error.message, stack: error.stack } : error
+  );
 
   response.status(500).json({
     message: "Erro interno do servidor."

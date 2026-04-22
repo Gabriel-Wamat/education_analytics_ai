@@ -17,6 +17,10 @@ vi.mock("@/pages/grading-page", () => ({
   GradingPage: () => <div>ROUTE_GRADING_PAGE</div>
 }));
 
+vi.mock("@/pages/emails-page", () => ({
+  EmailsPage: () => <div>ROUTE_EMAILS_PAGE</div>
+}));
+
 vi.mock("@/pages/exam-dashboard-page", () => ({
   ExamDashboardPage: () => <div>ROUTE_EXAM_DASHBOARD_PAGE</div>
 }));
@@ -64,6 +68,11 @@ describe("AppRouter", () => {
   it("maps /grading", async () => {
     renderRoute("/grading");
     expect(await screen.findByText("ROUTE_GRADING_PAGE")).toBeInTheDocument();
+  });
+
+  it("maps /emails", async () => {
+    renderRoute("/emails");
+    expect(await screen.findByText("ROUTE_EMAILS_PAGE")).toBeInTheDocument();
   });
 
   it("maps /dashboard", async () => {

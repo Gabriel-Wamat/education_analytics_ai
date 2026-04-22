@@ -9,6 +9,8 @@ import {
 import { AppShell } from "@/components/layout/app-shell";
 import { ClassDetailPage } from "@/pages/class-detail-page";
 import { ClassesPage } from "@/pages/classes-page";
+import { EmailsPage } from "@/pages/emails-page";
+import { ExamBankPage } from "@/pages/exam-bank-page";
 import { ExamDashboardPage } from "@/pages/exam-dashboard-page";
 import { ExamWizardPage } from "@/pages/exam-wizard-page";
 import { GoalsPage } from "@/pages/goals-page";
@@ -33,6 +35,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: "exam-templates/new",
         element: <ExamWizardPage />
+      },
+      {
+        path: "exam-bank",
+        element: <ExamBankPage />
       },
       {
         path: "grading",
@@ -61,6 +67,10 @@ export const appRoutes: RouteObject[] = [
       {
         path: "classes/:classId",
         element: <ClassDetailPage />
+      },
+      {
+        path: "emails",
+        element: <EmailsPage />
       },
       {
         path: "*",

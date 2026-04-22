@@ -1,13 +1,17 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { GenerateExamInstancesInput } from "../dto/generate-exam-instances-input";
 import { ValidationError } from "../errors/validation-error";
 import { NotFoundError } from "../errors/not-found-error";
+import { buildExamArtifactDownloadUrl } from "../support/exam-artifact-download-url";
+import {
+  buildDerivedArtifactId
+} from "../support/exam-batch-artifacts";
 import { ICsvService } from "../services/csv-service";
 import { IPdfGeneratorService } from "../services/pdf-generator-service";
 import { ExamInstance } from "../../domain/entities/exam-instance";
-import { GeneratedArtifact } from "../../domain/entities/generated-artifact";
 import { createRandomizedExamInstance } from "../../domain/services/exam-instance-randomizer";
 import { IExamInstanceRepository } from "../../domain/repositories/exam-instance-repository";
 import { IExamTemplateRepository } from "../../domain/repositories/exam-template-repository";
@@ -16,7 +20,16 @@ export interface GenerateExamInstancesResult {
   batchId: string;
   quantity: number;
   instances: ExamInstance[];
-  artifacts: GeneratedArtifact[];
+  artifacts: Array<{
+    id: string;
+    kind: "PDF" | "CSV";
+    fileName: string;
+    mimeType: string;
+    absolutePath: string | null;
+    sizeInBytes: number;
+    createdAt: Date;
+    downloadUrl: string;
+  }>;
 }
 
 export class GenerateExamInstancesUseCase {
@@ -27,6 +40,23 @@ export class GenerateExamInstancesUseCase {
     private readonly csvService: ICsvService,
     private readonly artifactsBaseDir: string
   ) {}
+
+  private async readArtifactWithRetry(filePath: string): Promise<Buffer> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        return await fs.readFile(filePath);
+      } catch (error) {
+        lastError = error;
+        await new Promise((resolve) => {
+          setTimeout(resolve, 25 * (attempt + 1));
+        });
+      }
+    }
+
+    throw lastError;
+  }
 
   async execute(input: GenerateExamInstancesInput): Promise<GenerateExamInstancesResult> {
     if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
@@ -90,12 +120,45 @@ export class GenerateExamInstancesUseCase {
       persistedInstances,
       outputDir
     );
+    const artifactPayload = await Promise.all(
+      [
+        ...pdfArtifacts.map((artifact, index) => ({
+          artifact,
+          artifactId: buildDerivedArtifactId({
+            kind: "PDF",
+            batchId,
+            instanceId: persistedInstances[index]?.id
+          })
+        })),
+        {
+          artifact: answerKeyArtifact,
+          artifactId: buildDerivedArtifactId({
+            kind: "CSV",
+            batchId
+          })
+        }
+      ].map(async ({ artifact, artifactId }) => {
+        const content = await this.readArtifactWithRetry(artifact.absolutePath);
+
+        return {
+          id: artifactId,
+          kind: artifact.kind,
+          fileName: artifact.fileName,
+          mimeType: artifact.mimeType,
+          absolutePath: null,
+          sizeInBytes: content.byteLength,
+          createdAt: new Date(),
+          downloadUrl: buildExamArtifactDownloadUrl(artifactId)
+        };
+      })
+    );
+    await fs.rm(outputDir, { recursive: true, force: true });
 
     return {
       batchId,
       quantity: persistedInstances.length,
       instances: persistedInstances,
-      artifacts: [...pdfArtifacts, answerKeyArtifact]
+      artifacts: artifactPayload
     };
   }
 }

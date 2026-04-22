@@ -5,4 +5,5 @@ export interface IExamInstanceRepository {
   findById(id: string): Promise<ExamInstance | null>;
   findByExamCodes(examCodes: string[]): Promise<ExamInstance[]>;
   findByBatchId(batchId: string): Promise<ExamInstance[]>;
+  findByTemplateId(templateId: string): Promise<ExamInstance[]>;
 }

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { after, before, beforeEach, describe, it } from "node:test";
-import fs from "node:fs/promises";
 import crypto from "node:crypto";
 
 import request from "supertest";
@@ -12,13 +11,14 @@ import {
   createBackendTestHarness,
   createQuestionPayload
 } from "../route-support/backend-harness";
+import { binaryParser } from "../support/http-binary";
 
 const extractPdfText = (pdfContent: string): string =>
   [...pdfContent.matchAll(/<([0-9A-Fa-f]+)>/g)]
     .map((match) => Buffer.from(match[1] ?? "", "hex").toString("latin1"))
     .join("");
 
-describe("Backend route contracts", () => {
+describe("Backend route contracts", { concurrency: 1 }, () => {
   let harness: BackendTestHarness;
 
   before(async () => {
@@ -161,10 +161,29 @@ describe("Backend route contracts", () => {
 
     const answerKeyArtifact = generateResponse.body.artifacts.find(
       (artifact: { kind: string }) => artifact.kind === "CSV"
-    ) as { absolutePath: string } | undefined;
+    ) as { id: string; downloadUrl: string } | undefined;
     assert.ok(answerKeyArtifact);
 
-    const answerKeyContent = await fs.readFile(answerKeyArtifact.absolutePath, "utf-8");
+    const batchesResponse = await request(harness.app).get(
+      `/exam-templates/${examTemplateId}/batches`
+    );
+    assert.equal(batchesResponse.status, 200);
+    assert.equal(batchesResponse.body.length, 1);
+
+    const batchDetailResponse = await request(harness.app).get(
+      `/exam-batches/${generateResponse.body.batchId as string}`
+    );
+    assert.equal(batchDetailResponse.status, 200);
+    assert.equal(batchDetailResponse.body.instances.length, 2);
+
+    const answerKeyDownloadResponse = await request(harness.app)
+      .get(`/exam-batches/artifacts/${answerKeyArtifact.id}/download`)
+      .buffer(true)
+      .parse(binaryParser);
+    assert.equal(answerKeyDownloadResponse.status, 200);
+    assert.match(answerKeyDownloadResponse.headers["content-type"], /text\/csv/);
+
+    const answerKeyContent = (answerKeyDownloadResponse.body as Buffer).toString("utf-8");
     const answerKeyRows = answerKeyContent.trim().split(/\r?\n/);
     assert.equal(answerKeyRows.length, 3);
     assert.match(answerKeyRows[0] ?? "", /^examCode,q1,q2$/);
@@ -191,10 +210,16 @@ describe("Backend route contracts", () => {
     assert.equal(generationResponse.status, 201);
     const answerKeyArtifact = generationResponse.body.artifacts.find(
       (artifact: { kind: string }) => artifact.kind === "CSV"
-    ) as { absolutePath: string } | undefined;
+    ) as { id: string } | undefined;
     assert.ok(answerKeyArtifact);
 
-    const answerKeyBuffer = await fs.readFile(answerKeyArtifact.absolutePath);
+    const answerKeyDownloadResponse = await request(harness.app)
+      .get(`/exam-batches/artifacts/${answerKeyArtifact.id}/download`)
+      .buffer(true)
+      .parse(binaryParser);
+    assert.equal(answerKeyDownloadResponse.status, 200);
+
+    const answerKeyBuffer = answerKeyDownloadResponse.body as Buffer;
     const studentResponsesCsv = buildStudentResponsesCsvFromAnswerKey(
       answerKeyBuffer.toString("utf-8")
     );
@@ -307,10 +332,17 @@ describe("Backend route contracts", () => {
     assert.equal(generationResponse.status, 201);
     const pdfArtifact = generationResponse.body.artifacts.find(
       (artifact: { kind: string }) => artifact.kind === "PDF"
-    ) as { absolutePath: string } | undefined;
+    ) as { id: string } | undefined;
     assert.ok(pdfArtifact);
 
-    const pdfContent = await fs.readFile(pdfArtifact.absolutePath, "latin1");
+    const pdfDownloadResponse = await request(harness.app)
+      .get(`/exam-batches/artifacts/${pdfArtifact.id}/download`)
+      .buffer(true)
+      .parse(binaryParser);
+    assert.equal(pdfDownloadResponse.status, 200);
+    assert.match(pdfDownloadResponse.headers["content-type"], /application\/pdf/);
+
+    const pdfContent = (pdfDownloadResponse.body as Buffer).toString("latin1");
     const extractedPdfText = extractPdfText(pdfContent);
     assert.match(extractedPdfText, /Avaliação Bimestral/);
     assert.match(extractedPdfText, /Disciplina: Matemática/);

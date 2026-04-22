@@ -55,25 +55,36 @@ export class PrismaQuestionRepository implements IQuestionRepository {
   }
 
   async update(question: Question): Promise<Question> {
-    const updatedQuestion = await this.prismaClient.question.update({
-      where: { id: question.id },
-      data: {
-        topic: question.topic,
-        unit: question.unit,
-        statement: question.statement,
-        updatedAt: question.updatedAt,
-        options: {
-          deleteMany: {},
-          create: question.options.map((option) => ({
-            id: option.id,
-            description: option.description,
-            isCorrect: option.isCorrect
-          }))
+    const updatedQuestion = await this.prismaClient.$transaction(async (transactionClient) => {
+      await transactionClient.question.update({
+        where: { id: question.id },
+        data: {
+          topic: question.topic,
+          unit: question.unit,
+          statement: question.statement,
+          updatedAt: question.updatedAt
         }
-      },
-      include: {
-        options: true
-      }
+      });
+
+      await transactionClient.option.deleteMany({
+        where: { questionId: question.id }
+      });
+
+      await transactionClient.option.createMany({
+        data: question.options.map((option) => ({
+          id: option.id,
+          questionId: question.id,
+          description: option.description,
+          isCorrect: option.isCorrect
+        }))
+      });
+
+      return transactionClient.question.findUniqueOrThrow({
+        where: { id: question.id },
+        include: {
+          options: true
+        }
+      });
     });
 
     return toDomainQuestion(updatedQuestion);

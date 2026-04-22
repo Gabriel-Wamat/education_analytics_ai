@@ -198,7 +198,7 @@ export const GradingPage = () => {
                 </div>
               ) : (
                 <Alert tone="info">
-                  O relatório aparecerá aqui assim que o backend concluir a correção da turma.
+                  O relatório aparecerá aqui assim que o sistema concluir a correção da turma.
                 </Alert>
               )}
             </CardContent>

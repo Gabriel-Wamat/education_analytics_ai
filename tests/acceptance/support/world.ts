@@ -9,6 +9,8 @@ export class AcceptanceWorld extends World {
   examId?: string;
   batchId?: string;
   answerKeyArtifactPath?: string;
+  answerKeyArtifactId?: string;
+  answerKeyDownloadUrl?: string;
   generatedInstances: Array<Record<string, unknown>> = [];
   generatedArtifacts: Array<Record<string, unknown>> = [];
 
@@ -41,6 +43,8 @@ export class AcceptanceWorld extends World {
     this.examId = undefined;
     this.batchId = undefined;
     this.answerKeyArtifactPath = undefined;
+    this.answerKeyArtifactId = undefined;
+    this.answerKeyDownloadUrl = undefined;
     this.generatedInstances = [];
     this.generatedArtifacts = [];
     this.studentsByName = new Map();

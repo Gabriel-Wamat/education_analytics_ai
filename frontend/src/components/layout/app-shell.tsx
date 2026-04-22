@@ -4,6 +4,8 @@ import {
   BookOpenCheck,
   ClipboardList,
   FileCheck2,
+  Files,
+  Mail,
   Target,
   UsersRound,
   WandSparkles,
@@ -41,6 +43,12 @@ const navigationSections: Array<{
         icon: WandSparkles
       },
       {
+        to: "/exam-bank",
+        label: "Banco de provas",
+        description: "Templates e gabaritos",
+        icon: Files
+      },
+      {
         to: "/grading",
         label: "Correção",
         description: "Notas e processamento",
@@ -74,6 +82,12 @@ const navigationSections: Array<{
         label: "Turmas",
         description: "Avaliações e resumos",
         icon: BookOpenCheck
+      },
+      {
+        to: "/emails",
+        label: "E-mails",
+        description: "Histórico enviado",
+        icon: Mail
       }
     ]
   }
@@ -113,6 +127,14 @@ const routeMeta = [
     secondaryAction: { label: "Alunos", to: "/students", variant: "ghost" as const }
   },
   {
+    pattern: "/emails",
+    breadcrumb: "Gestão pedagógica",
+    title: "E-mails enviados",
+    description: "Histórico dos resumos pedagógicos enviados para cada aluno, com status de entrega e conteúdo do digest.",
+    primaryAction: { label: "Turmas", to: "/classes", variant: "secondary" as const },
+    secondaryAction: { label: "Alunos", to: "/students", variant: "ghost" as const }
+  },
+  {
     pattern: "/dashboard",
     breadcrumb: "Analytics educacional",
     title: "Dashboard analítico",
@@ -129,6 +151,14 @@ const routeMeta = [
     secondaryAction: { label: "Nova prova", to: "/exam-templates/new", variant: "secondary" as const }
   },
   {
+    pattern: "/exam-bank",
+    breadcrumb: "Operação acadêmica",
+    title: "Banco de provas",
+    description: "Consulte templates, lotes gerados, PDFs individuais e os respectivos gabaritos.",
+    primaryAction: { label: "Nova prova", to: "/exam-templates/new", variant: "secondary" as const },
+    secondaryAction: { label: "Correção", to: "/grading", variant: "ghost" as const }
+  },
+  {
     pattern: "/grading",
     breadcrumb: "Correção e relatórios",
     title: "Processamento da turma",
@@ -141,8 +171,8 @@ const routeMeta = [
     breadcrumb: "Montagem de prova",
     title: "Assistente de criação",
     description: "Selecione questões, configure o template e prepare os artefatos.",
-    primaryAction: { label: "Banco de questões", to: "/questions", variant: "secondary" as const },
-    secondaryAction: { label: "Correção", to: "/grading", variant: "ghost" as const }
+    primaryAction: { label: "Banco de provas", to: "/exam-bank", variant: "secondary" as const },
+    secondaryAction: { label: "Banco de questões", to: "/questions", variant: "ghost" as const }
   },
   {
     pattern: "/questions",
@@ -150,7 +180,7 @@ const routeMeta = [
     title: "Banco de questões",
     description: "Cadastre, revise e mantenha o catálogo usado na montagem das provas.",
     primaryAction: { label: "Nova prova", to: "/exam-templates/new", variant: "secondary" as const },
-    secondaryAction: { label: "Correção", to: "/grading", variant: "ghost" as const }
+    secondaryAction: { label: "Banco de provas", to: "/exam-bank", variant: "ghost" as const }
   }
 ];
 

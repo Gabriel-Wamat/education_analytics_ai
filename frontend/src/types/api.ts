@@ -34,10 +34,14 @@ export interface ExamTemplate {
 }
 
 export interface GeneratedArtifact {
+  id: string;
   kind: "PDF" | "CSV";
   fileName: string;
-  absolutePath: string;
+  absolutePath: string | null;
   mimeType: string;
+  sizeInBytes: number;
+  createdAt: string;
+  downloadUrl: string;
 }
 
 export interface ExamInstanceOption {
@@ -73,6 +77,46 @@ export interface GenerateExamInstancesResponse {
   quantity: number;
   instances: ExamInstance[];
   artifacts: GeneratedArtifact[];
+}
+
+export interface ExamBatchSummary {
+  id: string;
+  templateId: string;
+  templateTitle: string;
+  quantity: number;
+  createdAt: string;
+  artifacts: GeneratedArtifact[];
+}
+
+export interface ExamBatchInstanceDetail {
+  id: string;
+  examCode: string;
+  createdAt: string;
+  questionCount: number;
+  answerKey: string[];
+  questions: Array<{
+    position: number;
+    statement: string;
+    answer: string;
+    options: Array<{
+      position: number;
+      displayCode: string;
+      description: string;
+      isCorrect: boolean;
+    }>;
+  }>;
+}
+
+export interface ExamBatchDetail {
+  id: string;
+  templateId: string;
+  templateTitle: string;
+  quantity: number;
+  createdAt: string;
+  headerMetadata: ExamHeaderMetadata | null;
+  alternativeIdentificationType: AlternativeIdentificationType;
+  artifacts: GeneratedArtifact[];
+  instances: ExamBatchInstanceDetail[];
 }
 
 export interface GradedQuestionResult {
@@ -219,6 +263,23 @@ export interface Evaluation {
   level: EvaluationLevel;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EmailLog {
+  id: string;
+  studentId: string;
+  studentName: string;
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  digestDate: string;
+  classIds: string[];
+  goalIds: string[];
+  entriesCount: number;
+  status: "sent" | "failed";
+  attemptedAt: string;
+  failureReason?: string;
 }
 
 export interface ClassEvaluationsResponse {

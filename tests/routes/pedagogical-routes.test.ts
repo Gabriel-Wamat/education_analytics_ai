@@ -8,7 +8,7 @@ import {
   createBackendTestHarness
 } from "../route-support/backend-harness";
 
-describe("Pedagogical module routes (alunos/metas/turmas/avaliações/e-mail)", () => {
+describe("Pedagogical module routes (alunos/metas/turmas/avaliações/e-mail)", { concurrency: 1 }, () => {
   let harness: BackendTestHarness;
 
   before(async () => {
@@ -201,6 +201,15 @@ describe("Pedagogical module routes (alunos/metas/turmas/avaliações/e-mail)", 
     assert.ok(sent[0].subject.toLowerCase().includes("resumo"));
     assert.ok(sent[0].text.includes("Leitura"));
     assert.ok(sent[0].text.includes("Escrita"));
+
+    const messageHistory = await request(harness.app).get("/email/messages");
+    assert.equal(messageHistory.status, 200);
+    assert.equal(messageHistory.body.length, 1);
+    assert.equal(messageHistory.body[0].studentName, "Ana Souza");
+    assert.equal(messageHistory.body[0].to, "ana@example.com");
+    assert.equal(messageHistory.body[0].status, "sent");
+    assert.equal(messageHistory.body[0].entriesCount, 2);
+    assert.ok(messageHistory.body[0].subject.toLowerCase().includes("resumo"));
 
     // Running the digest a second time must not re-send.
     const rerun = await request(harness.app).post("/email/digest").send({});

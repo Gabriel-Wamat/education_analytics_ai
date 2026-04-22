@@ -36,7 +36,6 @@ Este projeto não usa Python, então não há `uv` nem `requirements.txt`. As de
 
 ```bash
 npm install
-cp .env.example .env
 npm run prisma:migrate:deploy
 ```
 
@@ -49,10 +48,11 @@ npm install
 
 ## Variáveis de ambiente
 
-Crie um arquivo `.env` na raiz com os valores necessários:
+O projeto usa um único arquivo `.env` na raiz. Ele é ignorado pelo Git e deve concentrar tanto a configuração local quanto a de testes:
 
 ```env
 DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/exam_manager?schema=public
+TEST_DATABASE_URL=postgresql://USER:PASSWORD@localhost:5432/exam_manager_test?schema=public
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-5-mini
 
@@ -67,7 +67,7 @@ SMTP_FROM=no-reply@education-analytics.local
 EMAIL_DIGEST_INTERVAL_MS=
 ```
 
-O `OPENAI_API_KEY` é opcional. Sem ele, o dashboard continua funcionando, mas os insights de IA ficam indisponíveis. Para o módulo pedagógico, o `JSON_STORAGE_DIR` aponta para a pasta onde os JSONs de alunos, metas, turmas, avaliações e fila de digest são persistidos. Quando `SMTP_HOST/PORT` não estão configurados, o sistema cai no `ConsoleEmailService` (apenas loga o e-mail) — útil em desenvolvimento. `EMAIL_DIGEST_INTERVAL_MS` ativa o agendador em background que drena a fila de resumo em intervalos regulares; quando ausente, a fila deve ser drenada manualmente via `POST /email/digest`.
+`DATABASE_URL` é usado pela aplicação em desenvolvimento. `TEST_DATABASE_URL` é usado automaticamente pelos testes de rota, benchmarks e aceitação. O `OPENAI_API_KEY` é opcional. Sem ele, o dashboard continua funcionando, mas os insights de IA ficam indisponíveis. Para o módulo pedagógico, o `JSON_STORAGE_DIR` aponta para a pasta onde os JSONs de alunos, metas, turmas, avaliações e fila de digest são persistidos. Quando `SMTP_HOST/PORT` não estão configurados, o sistema cai no `ConsoleEmailService` (apenas loga o e-mail) — útil em desenvolvimento. `EMAIL_DIGEST_INTERVAL_MS` ativa o agendador em background que drena a fila de resumo em intervalos regulares; quando ausente, a fila deve ser drenada manualmente via `POST /email/digest`.
 
 ## Execução
 
@@ -143,4 +143,3 @@ npm test
 ## Persistência JSON
 
 Os dados do módulo pedagógico ficam em arquivos JSON dentro de `JSON_STORAGE_DIR` (ex.: `data/students.json`, `data/classes.json`). A escrita é atômica (arquivo temporário + `rename`) e as operações são serializadas por uma cadeia de promises para evitar corridas.
-

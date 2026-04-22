@@ -7,13 +7,12 @@ coverage
 .vscode
 output
 .env
+.env.*
 frontend/node_modules
 frontend/dist
-.env.test
 *.tsbuildinfo
 frontend/*.d.ts
 .vercel
-.env.vercel
 AGENTS.md
 data/
 smoke-*.ts

@@ -37,7 +37,7 @@ export const validateStudentInput = (input: StudentInput): NormalizedStudentInpu
   }
 
   if (errors.length > 0) {
-    throw new ValidationError("Falha na validação do aluno.", errors);
+    throw new ValidationError("Dados do aluno inválidos.", errors);
   }
 
   return { name, cpf: cpfDigits, email };

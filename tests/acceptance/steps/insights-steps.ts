@@ -1,5 +1,3 @@
-import fs from "node:fs/promises";
-
 import { Given, Then, When } from "@cucumber/cucumber";
 import request from "supertest";
 
@@ -7,6 +5,7 @@ import { DashboardMetricsResponse } from "../../../backend/src/application/dto/d
 import { FakeLLMProviderService } from "../support/fake-llm-provider";
 import { getTestContext } from "../support/test-context";
 import { AcceptanceWorld } from "../support/world";
+import { binaryParser } from "../../support/http-binary";
 
 interface GeneratedExamInstancePayload {
   examCode: string;
@@ -133,15 +132,33 @@ Given(
     this.batchId = generationResponse.body.batchId as string;
     this.generatedInstances = generationResponse.body.instances as Array<Record<string, unknown>>;
     this.generatedArtifacts = generationResponse.body.artifacts as Array<Record<string, unknown>>;
-    this.answerKeyArtifactPath = (
-      generationResponse.body.artifacts as Array<{ kind: string; absolutePath: string }>
-    ).find((artifact) => artifact.kind === "CSV")?.absolutePath;
+    const answerKeyArtifact = (
+      generationResponse.body.artifacts as Array<{
+        id: string;
+        kind: string;
+        absolutePath: string | null;
+        downloadUrl: string;
+      }>
+    ).find((artifact) => artifact.kind === "CSV");
+    this.answerKeyArtifactPath = answerKeyArtifact?.absolutePath ?? undefined;
+    this.answerKeyArtifactId = answerKeyArtifact?.id;
+    this.answerKeyDownloadUrl = answerKeyArtifact?.downloadUrl;
 
-    if (!this.answerKeyArtifactPath) {
+    if (!this.answerKeyArtifactId) {
       throw new Error("O gabarito CSV não foi gerado.");
     }
 
-    const answerKeyBuffer = await fs.readFile(this.answerKeyArtifactPath);
+    const answerKeyResponse = await request(app)
+      .get(`/exam-batches/artifacts/${this.answerKeyArtifactId}/download`)
+      .buffer(true)
+      .parse(binaryParser);
+    if (answerKeyResponse.status !== 200) {
+      throw new Error(
+        `Não foi possível baixar o gabarito CSV. Status recebido: ${answerKeyResponse.status}.`
+      );
+    }
+
+    const answerKeyBuffer = answerKeyResponse.body as Buffer;
     const [firstInstance, secondInstance] = this.generatedInstances as GeneratedExamInstancePayload[];
 
     const questionHeaders = [...firstInstance.randomizedQuestions]

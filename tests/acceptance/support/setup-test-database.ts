@@ -27,10 +27,12 @@ const runPrismaCli = async (args: string[]): Promise<void> => {
 };
 
 export const setupTestDatabase = async (): Promise<void> => {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error("A variável DATABASE_URL é obrigatória para os testes.");
+    throw new Error("Defina TEST_DATABASE_URL ou DATABASE_URL para os testes.");
   }
+
+  process.env.DATABASE_URL = databaseUrl;
 
   const parsedUrl = new URL(databaseUrl);
   const databaseName = parsedUrl.pathname.replace(/^\//, "");

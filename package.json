@@ -8,12 +8,13 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "dotenv -e .env -- node dist/infrastructure/http/server.js",
     "seed:demo": "dotenv -e .env -- node --import tsx scripts/seed-demo-data.ts",
+    "seed:full-system": "dotenv -e .env -- node --import tsx scripts/seed-full-system.ts",
     "prisma:generate": "dotenv -e .env -- prisma generate",
     "prisma:migrate:dev": "dotenv -e .env -- prisma migrate dev",
     "prisma:migrate:deploy": "dotenv -e .env -- prisma migrate deploy",
-    "test:routes": "dotenv -e .env.test -- node --import tsx --test tests/routes/*.test.ts",
-    "test:acceptance": "dotenv -e .env.test -- cucumber-js",
-    "benchmark:routes": "dotenv -e .env.test -- node --import tsx scripts/benchmark-routes.ts",
+    "test:routes": "dotenv -e .env -- node --import tsx --test --test-concurrency=1 tests/routes/*.test.ts",
+    "test:acceptance": "dotenv -e .env -- cucumber-js",
+    "benchmark:routes": "dotenv -e .env -- node --import tsx scripts/benchmark-routes.ts",
     "postinstall": "npm run prisma:generate"
   },
   "dependencies": {

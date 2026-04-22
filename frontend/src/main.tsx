@@ -8,6 +8,7 @@ import "./styles/index.css";
 
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { Analytics } from "@vercel/analytics/react";
 
 import { AppProviders } from "@/app/providers/app-providers";
 import { AppRouter } from "@/app/router";
@@ -16,6 +17,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AppProviders>
       <AppRouter />
+      <Analytics />
     </AppProviders>
   </React.StrictMode>
 );

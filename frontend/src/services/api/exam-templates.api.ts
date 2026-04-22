@@ -1,6 +1,8 @@
 import { httpClient } from "@/services/http/client";
 import {
   AlternativeIdentificationType,
+  ExamBatchDetail,
+  ExamBatchSummary,
   ExamHeaderMetadata,
   ExamTemplate,
   GenerateExamInstancesResponse
@@ -12,6 +14,14 @@ const ensureExamTemplateArray = (payload: unknown): ExamTemplate[] => {
   }
 
   return payload as ExamTemplate[];
+};
+
+const ensureExamBatchSummaryArray = (payload: unknown): ExamBatchSummary[] => {
+  if (!Array.isArray(payload)) {
+    throw new Error("A API de lotes retornou um formato inválido.");
+  }
+
+  return payload as ExamBatchSummary[];
 };
 
 export interface CreateExamTemplatePayload {
@@ -38,6 +48,12 @@ export const examTemplatesApi = {
     const response = await httpClient.get<ExamTemplate>(`/exam-templates/${examTemplateId}`);
     return response.data;
   },
+  listBatches: async (examTemplateId: string): Promise<ExamBatchSummary[]> => {
+    const response = await httpClient.get<ExamBatchSummary[]>(
+      `/exam-templates/${examTemplateId}/batches`
+    );
+    return ensureExamBatchSummaryArray(response.data);
+  },
   update: async (
     examTemplateId: string,
     payload: CreateExamTemplatePayload
@@ -59,6 +75,10 @@ export const examTemplatesApi = {
       `/exam-templates/${examTemplateId}/generate`,
       payload
     );
+    return response.data;
+  },
+  getBatchById: async (batchId: string): Promise<ExamBatchDetail> => {
+    const response = await httpClient.get<ExamBatchDetail>(`/exam-batches/${batchId}`);
     return response.data;
   }
 };

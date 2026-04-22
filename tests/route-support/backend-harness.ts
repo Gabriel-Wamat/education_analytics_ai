@@ -67,6 +67,8 @@ export const createBackendTestHarness = async (): Promise<BackendTestHarness> =>
     llmProviderService.reset();
     emailService.reset();
     clock.set(new Date("2026-04-22T12:00:00.000Z"));
+    await prismaClient.examArtifact.deleteMany();
+    await prismaClient.examBatch.deleteMany();
     await prismaClient.examReport.deleteMany();
     await prismaClient.examInstance.deleteMany();
     await prismaClient.examTemplate.deleteMany();

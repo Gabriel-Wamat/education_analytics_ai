@@ -1,10 +1,9 @@
-import fs from "node:fs/promises";
-
 import { Given, Then, When } from "@cucumber/cucumber";
 import request from "supertest";
 
 import { getTestContext } from "../support/test-context";
 import { AcceptanceWorld } from "../support/world";
+import { binaryParser } from "../../support/http-binary";
 
 interface GeneratedExamInstancePayload {
   examCode: string;
@@ -94,9 +93,17 @@ const createGeneratedExamFixture = async (
   world.batchId = generationResponse.body.batchId as string;
   world.generatedInstances = generationResponse.body.instances as Array<Record<string, unknown>>;
   world.generatedArtifacts = generationResponse.body.artifacts as Array<Record<string, unknown>>;
-  world.answerKeyArtifactPath = (
-    generationResponse.body.artifacts as Array<{ kind: string; absolutePath: string }>
-  ).find((artifact) => artifact.kind === "CSV")?.absolutePath;
+  const answerKeyArtifact = (
+    generationResponse.body.artifacts as Array<{
+      id: string;
+      kind: string;
+      absolutePath: string | null;
+      downloadUrl: string;
+    }>
+  ).find((artifact) => artifact.kind === "CSV");
+  world.answerKeyArtifactPath = answerKeyArtifact?.absolutePath ?? undefined;
+  world.answerKeyArtifactId = answerKeyArtifact?.id;
+  world.answerKeyDownloadUrl = answerKeyArtifact?.downloadUrl;
 };
 
 const submitGradeRequest = async (
@@ -106,11 +113,21 @@ const submitGradeRequest = async (
 ): Promise<void> => {
   const { app } = getTestContext();
 
-  if (!world.answerKeyArtifactPath) {
+  if (!world.answerKeyArtifactId) {
     throw new Error("O gabarito CSV não foi gerado.");
   }
 
-  const answerKeyBuffer = await fs.readFile(world.answerKeyArtifactPath);
+  const answerKeyResponse = await request(app)
+    .get(`/exam-batches/artifacts/${world.answerKeyArtifactId}/download`)
+    .buffer(true)
+    .parse(binaryParser);
+  if (answerKeyResponse.status !== 200) {
+    throw new Error(
+      `Não foi possível baixar o gabarito CSV. Status recebido: ${answerKeyResponse.status}.`
+    );
+  }
+
+  const answerKeyBuffer = answerKeyResponse.body as Buffer;
   const instance = world.generatedInstances[0] as GeneratedExamInstancePayload;
   const studentResponseCsv = [
     "studentId,studentName,examCode,q1",

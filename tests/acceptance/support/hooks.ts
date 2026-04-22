@@ -54,6 +54,8 @@ Before(async function (this: AcceptanceWorld) {
   fakeLLMProviderService.reset();
   inMemoryEmailService.reset();
   testClock.set(new Date("2026-04-22T12:00:00.000Z"));
+  await prismaClient.examArtifact.deleteMany();
+  await prismaClient.examBatch.deleteMany();
   await prismaClient.examReport.deleteMany();
   await prismaClient.examInstance.deleteMany();
   await prismaClient.examTemplate.deleteMany();

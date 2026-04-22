@@ -121,4 +121,20 @@ export class PrismaExamInstanceRepository implements IExamInstanceRepository {
 
     return examInstances.map(toDomainExamInstance);
   }
+
+  async findByTemplateId(templateId: string): Promise<ExamInstance[]> {
+    const examInstances = await this.prismaClient.examInstance.findMany({
+      where: { templateId },
+      orderBy: [
+        {
+          createdAt: "desc"
+        },
+        {
+          examCode: "asc"
+        }
+      ]
+    });
+
+    return examInstances.map(toDomainExamInstance);
+  }
 }

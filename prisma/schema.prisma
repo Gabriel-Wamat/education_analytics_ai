@@ -17,6 +17,11 @@ enum GradingStrategyType {
   PROPORTIONAL
 }
 
+enum GeneratedArtifactKind {
+  PDF
+  CSV
+}
+
 model Question {
   id        String   @id @db.Uuid
   topic     String
@@ -49,6 +54,7 @@ model ExamTemplate {
   updatedAt                     DateTime                      @updatedAt
   examInstances                 ExamInstance[]
   examReports                   ExamReport[]
+  examBatches                   ExamBatch[]
 
   @@map("exam_templates")
 }
@@ -70,6 +76,35 @@ model ExamInstance {
   @@index([templateId])
   @@unique([batchId, signature])
   @@map("exam_instances")
+}
+
+model ExamBatch {
+  id            String         @id @db.Uuid
+  templateId    String         @db.Uuid
+  templateTitle String
+  quantity      Int
+  createdAt     DateTime       @default(now())
+  examTemplate  ExamTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  artifacts     ExamArtifact[]
+
+  @@index([templateId])
+  @@map("exam_batches")
+}
+
+model ExamArtifact {
+  id           String                @id @db.Uuid
+  batchId      String                @db.Uuid
+  kind         GeneratedArtifactKind
+  fileName     String
+  mimeType     String
+  absolutePath String?
+  sizeInBytes  Int
+  content      Bytes
+  createdAt    DateTime              @default(now())
+  examBatch    ExamBatch             @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@index([batchId])
+  @@map("exam_artifacts")
 }
 
 model ExamReport {

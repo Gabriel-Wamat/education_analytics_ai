@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
+
+import { EmailLog } from "../../domain/entities/email-log";
 import { EmailDigestEntry } from "../../domain/entities/email-notification";
 import { EVALUATION_LEVEL_LABELS } from "../../domain/entities/evaluation-level";
 import { IClassGroupRepository } from "../../domain/repositories/class-group-repository";
 import { IEmailDigestRepository } from "../../domain/repositories/email-digest-repository";
+import { IEmailLogRepository } from "../../domain/repositories/email-log-repository";
 import { IGoalRepository } from "../../domain/repositories/goal-repository";
 import { IStudentRepository } from "../../domain/repositories/student-repository";
 import { IEmailService, EmailMessage } from "../services/email-service";
@@ -35,6 +39,7 @@ export class SendEvaluationDigestUseCase {
     private readonly studentRepository: IStudentRepository,
     private readonly classGroupRepository: IClassGroupRepository,
     private readonly goalRepository: IGoalRepository,
+    private readonly emailLogRepository: IEmailLogRepository,
     private readonly emailService: IEmailService,
     private readonly clock: IClock = new SystemClock()
   ) {}
@@ -94,6 +99,15 @@ export class SendEvaluationDigestUseCase {
           entries.map((entry) => entry.id),
           this.clock.now()
         );
+        await this.emailLogRepository.create(
+          this.buildEmailLog({
+            studentId,
+            studentName: student.name,
+            status: "sent",
+            message,
+            entries
+          })
+        );
         result.emailsSent += 1;
         result.entriesProcessed += entries.length;
         result.digestsByStudent.push({
@@ -106,6 +120,16 @@ export class SendEvaluationDigestUseCase {
       } catch (error) {
         const reason = error instanceof Error ? error.message : "Erro desconhecido.";
         await this.emailDigestRepository.markFailed(entries.map((entry) => entry.id), reason);
+        await this.emailLogRepository.create(
+          this.buildEmailLog({
+            studentId,
+            studentName: student.name,
+            status: "failed",
+            message,
+            entries,
+            failureReason: reason
+          })
+        );
         result.emailsFailed += 1;
         result.digestsByStudent.push({
           studentId,
@@ -199,9 +223,42 @@ export class SendEvaluationDigestUseCase {
 
     return {
       to,
-      subject: `Atualização das suas avaliações — ${entries[0].digestDate}`,
+      subject: `Resumo diário das suas avaliações — ${entries[0].digestDate}`,
       text: lines.join("\n"),
       html: htmlSections.join("\n")
+    };
+  }
+
+  private buildEmailLog({
+    studentId,
+    studentName,
+    status,
+    message,
+    entries,
+    failureReason
+  }: {
+    studentId: string;
+    studentName: string;
+    status: EmailLog["status"];
+    message: EmailMessage;
+    entries: EmailDigestEntry[];
+    failureReason?: string;
+  }): EmailLog {
+    return {
+      id: randomUUID(),
+      studentId,
+      studentName,
+      to: message.to,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+      digestDate: entries[0]?.digestDate ?? formatDate(this.clock.now()),
+      classIds: [...new Set(entries.map((entry) => entry.classId))],
+      goalIds: [...new Set(entries.map((entry) => entry.goalId))],
+      entriesCount: entries.length,
+      status,
+      attemptedAt: this.clock.now(),
+      ...(failureReason ? { failureReason } : {})
     };
   }
 }

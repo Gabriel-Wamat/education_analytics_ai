@@ -26,6 +26,4 @@ export interface ExamWizardDraft {
   selectedQuestionIds: string[];
 }
 
-export interface ArtifactViewModel extends GeneratedArtifact {
-  downloadUrl?: string;
-}
+export type ArtifactViewModel = GeneratedArtifact;
