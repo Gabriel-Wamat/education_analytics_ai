@@ -57,6 +57,7 @@ import { CsvFileService } from "../services/csv-file-service";
 import { OpenAIProviderService } from "../services/openai-provider-service";
 import { PdfKitPdfGeneratorService } from "../services/pdfkit-pdf-generator-service";
 import { SmtpEmailService } from "../services/smtp-email-service";
+import { resolveJsonStorageDir } from "../storage/json-storage-dir";
 import { ExamController } from "../../presentation/http/controllers/exam-controller";
 import { ExamTemplateController } from "../../presentation/http/controllers/exam-template-controller";
 import { ExamBatchController } from "../../presentation/http/controllers/exam-batch-controller";
@@ -126,8 +127,7 @@ const resolveEmailService = (dependencies: AppDependencies): IEmailService => {
 export const createApp = (dependencies: AppDependencies = {}): Express => {
   const prismaClient = dependencies.prismaClient ?? createPrismaClient();
   const artifactsBaseDir = resolveArtifactsBaseDir(dependencies.artifactsBaseDir);
-  const jsonStorageDir =
-    dependencies.jsonStorageDir ?? path.resolve(process.cwd(), "data");
+  const jsonStorageDir = resolveJsonStorageDir(dependencies.jsonStorageDir);
   const clock = dependencies.clock ?? new SystemClock();
   const emailService = resolveEmailService(dependencies);
   const defaultFromAddress =

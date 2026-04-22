@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -17,10 +18,13 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/layout/page-header";
+import { useClassGroups } from "@/features/classes/hooks";
 import { StudentFormModal } from "@/features/students/student-form-modal";
 import { useDeleteStudent, useStudents } from "@/features/students/hooks";
 import { normalizeApiError } from "@/services/http/error";
 import { Student } from "@/types/api";
+
+const UNASSIGNED_CLASS_FILTER = "__unassigned__";
 
 const formatCpfMask = (raw: string): string => {
   const digits = raw.replace(/\D/g, "");
@@ -30,23 +34,76 @@ const formatCpfMask = (raw: string): string => {
 
 export const StudentsPage = () => {
   const { data: students = [], isLoading, isError, error } = useStudents();
+  const { data: classes = [] } = useClassGroups();
   const deleteStudentMutation = useDeleteStudent();
   const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const studentClassesMap = useMemo(() => {
+    const map = new Map<string, string[]>();
+
+    for (const classGroup of classes) {
+      for (const studentId of classGroup.studentIds) {
+        const currentTopics = map.get(studentId) ?? [];
+        currentTopics.push(classGroup.topic);
+        map.set(studentId, currentTopics);
+      }
+    }
+
+    return map;
+  }, [classes]);
+
+  const availableClassFilters = useMemo(() => {
+    const options = classes.map((classGroup) => ({
+      value: classGroup.id,
+      label: classGroup.topic
+    }));
+
+    const hasUnassignedStudents = students.some(
+      (student) => (studentClassesMap.get(student.id) ?? []).length === 0
+    );
+
+    if (hasUnassignedStudents) {
+      options.push({
+        value: UNASSIGNED_CLASS_FILTER,
+        label: "Sem turma"
+      });
+    }
+
+    return options;
+  }, [classes, studentClassesMap, students]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return students;
-    return students.filter((student) =>
-      [student.name, student.email, student.cpf]
+    return students.filter((student) => {
+      const classTopics = studentClassesMap.get(student.id) ?? [];
+      const matchesClass =
+        !classFilter ||
+        (classFilter === UNASSIGNED_CLASS_FILTER
+          ? classTopics.length === 0
+          : classes.some(
+              (classGroup) =>
+                classGroup.id === classFilter && classGroup.studentIds.includes(student.id)
+            ));
+
+      if (!matchesClass) {
+        return false;
+      }
+
+      if (!term) {
+        return true;
+      }
+
+      return [student.name, student.email, student.cpf, ...classTopics]
         .join(" ")
         .toLowerCase()
-        .includes(term)
-    );
-  }, [students, search]);
+        .includes(term);
+    });
+  }, [classes, classFilter, search, studentClassesMap, students]);
 
   const handleDelete = async () => {
     if (!studentToDelete) return;
@@ -80,17 +137,43 @@ export const StudentsPage = () => {
       />
 
       <div className="surface p-6">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px_auto] lg:items-end">
           <Input
             placeholder="Buscar por nome, CPF ou e-mail"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
-          <Button variant="ghost" onClick={() => setSearch("")}>Limpar busca</Button>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700" htmlFor="students-class-filter">
+              Turma
+            </label>
+            <Select
+              id="students-class-filter"
+              value={classFilter}
+              onChange={(event) => setClassFilter(event.target.value)}
+            >
+              <option value="">Todas as turmas</option>
+              {availableClassFilters.map((classOption) => (
+                <option key={classOption.value} value={classOption.value}>
+                  {classOption.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setSearch("");
+              setClassFilter("");
+            }}
+          >
+            Limpar filtros
+          </Button>
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <StatusBadge tone="neutral">{filtered.length} visíveis</StatusBadge>
           <StatusBadge tone="info">{students.length} cadastrados</StatusBadge>
+          <StatusBadge tone="success">{classes.length} turmas</StatusBadge>
         </div>
       </div>
 
@@ -132,6 +215,7 @@ export const StudentsPage = () => {
               <TableHeaderCell>Nome</TableHeaderCell>
               <TableHeaderCell>CPF</TableHeaderCell>
               <TableHeaderCell>E-mail</TableHeaderCell>
+              <TableHeaderCell>Turmas</TableHeaderCell>
               <TableHeaderCell className="text-right">Ações</TableHeaderCell>
             </TableRow>
           </TableHead>
@@ -141,6 +225,24 @@ export const StudentsPage = () => {
                 <TableCell className="font-semibold text-slate-800">{student.name}</TableCell>
                 <TableCell>{formatCpfMask(student.cpf)}</TableCell>
                 <TableCell>{student.email}</TableCell>
+                <TableCell>
+                  <div className="flex max-w-xl flex-wrap gap-2">
+                    {(studentClassesMap.get(student.id) ?? []).length > 0 ? (
+                      (studentClassesMap.get(student.id) ?? []).map((topic) => (
+                        <StatusBadge
+                          key={`${student.id}-${topic}`}
+                          tone="info"
+                          className="max-w-[220px] truncate"
+                          title={topic}
+                        >
+                          {topic}
+                        </StatusBadge>
+                      ))
+                    ) : (
+                      <StatusBadge tone="neutral">Sem turma</StatusBadge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button
