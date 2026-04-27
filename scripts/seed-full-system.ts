@@ -82,7 +82,7 @@ interface ExamTemplatePayload {
 interface GeneratedArtifactPayload {
   kind: "PDF" | "CSV";
   fileName: string;
-  absolutePath: string;
+  absolutePath: string | null;
   mimeType: string;
 }
 
@@ -716,6 +716,35 @@ const buildStudentResponsesCsv = (
   return stringifyCsv(rows);
 };
 
+const buildAnswerKeyCsv = (instances: GeneratedExamInstancePayload[]): string => {
+  const questionHeaders =
+    instances[0]?.randomizedQuestions
+      .slice()
+      .sort((left, right) => left.position - right.position)
+      .map((question) => `q${question.position}`) ?? [];
+
+  const rows: string[][] = [["examCode", ...questionHeaders]];
+
+  for (const instance of instances.slice().sort((left, right) => left.examCode.localeCompare(right.examCode))) {
+    const orderedQuestions = instance.randomizedQuestions
+      .slice()
+      .sort((left, right) => left.position - right.position);
+
+    rows.push([
+      instance.examCode,
+      ...orderedQuestions.map((question) =>
+        buildDisplayAnswer(
+          question.randomizedOptions.map((option) => option.isCorrect),
+          question,
+          instance.alternativeIdentificationType
+        )
+      )
+    ]);
+  }
+
+  return stringifyCsv(rows);
+};
+
 const normalizeGradePayload = (payload: GradeResponsePayload) => ({
   strategy: payload.strategy,
   totalStudents: payload.totalStudents,
@@ -748,18 +777,16 @@ const normalizeGradePayload = (payload: GradeResponsePayload) => ({
 const gradeExamTwiceAndAssertDeterminism = async (
   app: ReturnType<typeof createApp>,
   gradingStrategyType: GradingStrategyType,
-  answerKeyAbsolutePath: string,
+  answerKeyCsv: string,
   studentResponsesCsv: string,
   fileSuffix: string
 ): Promise<GradeResponsePayload> => {
-  const answerKeyBuffer = await fs.readFile(answerKeyAbsolutePath);
-
   const executeGrade = async (): Promise<GradeResponsePayload> => {
     const response = await request(app)
       .post("/exams/grade")
       .field("gradingStrategyType", gradingStrategyType)
-      .attach("answerKeyFile", answerKeyBuffer, {
-        filename: path.basename(answerKeyAbsolutePath),
+      .attach("answerKeyFile", Buffer.from(answerKeyCsv, "utf-8"), {
+        filename: `answer-key-${fileSuffix}.csv`,
         contentType: "text/csv"
       })
       .attach("studentResponsesFile", Buffer.from(studentResponsesCsv, "utf-8"), {
@@ -937,7 +964,11 @@ const main = async (): Promise<void> => {
         throw new Error(`O gabarito CSV não foi retornado para ${config.templateTitle}.`);
       }
 
-      const outputDir = path.dirname(answerKeyArtifact.absolutePath);
+      const outputDir = path.resolve(process.cwd(), "output", "seed-artifacts", batchId);
+      await fs.mkdir(outputDir, { recursive: true });
+      const answerKeyCsv = buildAnswerKeyCsv(instances);
+      const answerKeyCsvPath = path.resolve(outputDir, answerKeyArtifact.fileName);
+      await fs.writeFile(answerKeyCsvPath, answerKeyCsv, "utf-8");
       const studentResponsesCsv = buildStudentResponsesCsv(
         config.key,
         config.students,
@@ -953,7 +984,7 @@ const main = async (): Promise<void> => {
       const gradePayload = await gradeExamTwiceAndAssertDeterminism(
         app,
         config.gradingStrategyType,
-        answerKeyArtifact.absolutePath,
+        answerKeyCsv,
         studentResponsesCsv,
         batchId
       );
@@ -975,11 +1006,11 @@ const main = async (): Promise<void> => {
         totalStudents: gradePayload.totalStudents,
         averageScore: Number(metricsPayload.summary.averageScore.toFixed(2)),
         averagePercentage: Number(metricsPayload.summary.averagePercentage.toFixed(2)),
-        answerKeyCsvPath: answerKeyArtifact.absolutePath,
+        answerKeyCsvPath,
         studentResponsesCsvPath,
         pdfFiles: artifacts
           .filter((artifact) => artifact.kind === "PDF")
-          .map((artifact) => artifact.absolutePath),
+          .map((artifact) => artifact.absolutePath ?? artifact.fileName),
         frontendUrl: `http://127.0.0.1:5173/exams/${gradePayload.examId}`,
         metricsUrl: `http://127.0.0.1:3000/exams/${gradePayload.examId}/metrics`
       });
