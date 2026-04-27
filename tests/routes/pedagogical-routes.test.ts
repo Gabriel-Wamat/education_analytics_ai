@@ -237,4 +237,49 @@ describe("Pedagogical module routes (alunos/metas/turmas/avaliações/e-mail)", 
     assert.equal(rerun.body.emailsSent, 0);
     assert.equal(harness.emailService.getSent().length, 1);
   });
+
+  it("sends manual emails to one student or to an entire class", async () => {
+    const ana = await createStudent();
+    const bruno = await createStudent({
+      name: "Bruno Lima",
+      cpf: "11144477735",
+      email: "bruno@example.com"
+    });
+    const classGroup = await createClass([ana.id, bruno.id], []);
+
+    const individual = await request(harness.app).post("/email/send").send({
+      scope: "STUDENT",
+      studentId: ana.id,
+      subject: "Mensagem individual",
+      text: "Olá, Ana. Revise a atividade 2."
+    });
+
+    assert.equal(individual.status, 200);
+    assert.equal(individual.body.emailsSent, 1);
+    assert.equal(individual.body.totalRecipients, 1);
+    assert.equal(harness.emailService.getSent().length, 1);
+    assert.equal(harness.emailService.getSent()[0].to, "ana@example.com");
+
+    const classDispatch = await request(harness.app).post("/email/send").send({
+      scope: "CLASS",
+      classId: classGroup.id,
+      subject: "Comunicado da turma",
+      text: "Olá, turma. A próxima revisão será na sexta-feira."
+    });
+
+    assert.equal(classDispatch.status, 200);
+    assert.equal(classDispatch.body.emailsSent, 2);
+    assert.equal(classDispatch.body.totalRecipients, 2);
+    assert.equal(harness.emailService.getSent().length, 3);
+
+    const messageHistory = await request(harness.app).get("/email/messages");
+    assert.equal(messageHistory.status, 200);
+    assert.equal(messageHistory.body.length, 3);
+    assert.ok(
+      messageHistory.body.some(
+        (entry: { subject: string; to: string }) =>
+          entry.subject === "Comunicado da turma" && entry.to === "bruno@example.com"
+      )
+    );
+  });
 });

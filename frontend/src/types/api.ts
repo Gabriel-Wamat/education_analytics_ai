@@ -359,6 +359,33 @@ export interface EmailLog {
   failureReason?: string;
 }
 
+export type ManualEmailScope = "STUDENT" | "CLASS";
+
+export interface SendManualEmailPayload {
+  scope: ManualEmailScope;
+  studentId?: string;
+  classId?: string;
+  subject: string;
+  text: string;
+}
+
+export interface ManualEmailRecipientResult {
+  studentId: string;
+  studentName: string;
+  studentEmail: string;
+  sent: boolean;
+  error?: string;
+}
+
+export interface SendManualEmailResponse {
+  scope: ManualEmailScope;
+  targetLabel: string;
+  totalRecipients: number;
+  emailsSent: number;
+  emailsFailed: number;
+  recipients: ManualEmailRecipientResult[];
+}
+
 export interface ClassEvaluationsResponse {
   classId: string;
   studentIds: string[];

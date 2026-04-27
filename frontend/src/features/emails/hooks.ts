@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { emailsApi } from "@/services/api/emails.api";
-import { EmailLog } from "@/types/api";
+import { EmailLog, SendManualEmailPayload } from "@/types/api";
 
 export const emailLogsQueryKey = ["email-logs"] as const;
 
@@ -10,3 +10,13 @@ export const useEmailLogs = () =>
     queryKey: emailLogsQueryKey,
     queryFn: emailsApi.list
   });
+
+export const useSendManualEmail = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SendManualEmailPayload) => emailsApi.sendManual(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: emailLogsQueryKey });
+    }
+  });
+};

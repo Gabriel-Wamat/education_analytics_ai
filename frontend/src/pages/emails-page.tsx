@@ -1,4 +1,5 @@
-import { Mail, RefreshCcw, Search } from "lucide-react";
+import { Mail, RefreshCcw, Search, Send, UserRound, UsersRound } from "lucide-react";
+import type { FormEvent } from "react";
 import { useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -7,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -17,9 +20,11 @@ import {
   TableHeaderCell,
   TableRow
 } from "@/components/ui/table";
-import { useEmailLogs } from "@/features/emails/hooks";
+import { useClassGroups } from "@/features/classes/hooks";
+import { useEmailLogs, useSendManualEmail } from "@/features/emails/hooks";
+import { useStudents } from "@/features/students/hooks";
 import { normalizeApiError } from "@/services/http/error";
-import { EmailLog } from "@/types/api";
+import { EmailLog, ManualEmailScope, SendManualEmailResponse } from "@/types/api";
 
 const formatDateTime = (value: string): string =>
   new Intl.DateTimeFormat("pt-BR", {
@@ -32,8 +37,17 @@ const previewBody = (value: string): string =>
 
 export const EmailsPage = () => {
   const { data: emailLogs = [], isLoading, isError, error, refetch, isFetching } = useEmailLogs();
+  const { data: students = [] } = useStudents();
+  const { data: classGroups = [] } = useClassGroups();
+  const sendManualEmail = useSendManualEmail();
   const [search, setSearch] = useState("");
   const [selectedEmail, setSelectedEmail] = useState<EmailLog | null>(null);
+  const [scope, setScope] = useState<ManualEmailScope>("STUDENT");
+  const [studentId, setStudentId] = useState("");
+  const [classId, setClassId] = useState("");
+  const [subject, setSubject] = useState("");
+  const [text, setText] = useState("");
+  const [sendResult, setSendResult] = useState<SendManualEmailResponse | null>(null);
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -55,12 +69,33 @@ export const EmailsPage = () => {
 
   const sentCount = emailLogs.filter((emailLog) => emailLog.status === "sent").length;
   const failedCount = emailLogs.filter((emailLog) => emailLog.status === "failed").length;
+  const targetIsReady = scope === "STUDENT" ? Boolean(studentId) : Boolean(classId);
+  const canSend =
+    targetIsReady &&
+    subject.trim().length > 0 &&
+    text.trim().length > 0 &&
+    !sendManualEmail.isPending;
+
+  const handleSendManualEmail = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSend) return;
+
+    const result = await sendManualEmail.mutateAsync({
+      scope,
+      ...(scope === "STUDENT" ? { studentId } : { classId }),
+      subject,
+      text
+    });
+    setSendResult(result);
+    setSubject("");
+    setText("");
+  };
 
   return (
     <div className="space-y-8">
       <PageHeader
-        title="E-mails enviados"
-        description="Visualize o histórico dos resumos pedagógicos enviados para cada aluno e acompanhe falhas de entrega quando houver."
+        title="E-mails"
+        description="Escreva mensagens para um aluno específico, dispare comunicados para uma turma inteira e acompanhe todo o histórico de envio."
         actions={
           <Button variant="secondary" size="md" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCcw className="h-4 w-4" />
@@ -68,6 +103,140 @@ export const EmailsPage = () => {
           </Button>
         }
       />
+
+      <form className="surface space-y-5 p-6" onSubmit={handleSendManualEmail}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Compor mensagem
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-800">
+              Enviar e-mail para aluno ou turma
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+              Use este painel para recados pedagógicos manuais. Quando o alvo for uma turma,
+              o sistema envia uma mensagem individual para cada aluno matriculado e registra
+              cada entrega no histórico.
+            </p>
+          </div>
+          <StatusBadge tone={scope === "STUDENT" ? "info" : "neutral"}>
+            {scope === "STUDENT" ? "Envio individual" : "Envio para turma"}
+          </StatusBadge>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)_minmax(0,1fr)]">
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Tipo de envio
+            </label>
+            <Select
+              value={scope}
+              onChange={(event) => {
+                setScope(event.target.value as ManualEmailScope);
+                setSendResult(null);
+              }}
+            >
+              <option value="STUDENT">Aluno individual</option>
+              <option value="CLASS">Turma inteira</option>
+            </Select>
+          </div>
+
+          {scope === "STUDENT" ? (
+            <div>
+              <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <UserRound className="h-4 w-4" />
+                Aluno
+              </label>
+              <Select
+                value={studentId}
+                onChange={(event) => {
+                  setStudentId(event.target.value);
+                  setSendResult(null);
+                }}
+              >
+                <option value="">Selecione um aluno</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} — {student.email}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : (
+            <div>
+              <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <UsersRound className="h-4 w-4" />
+                Turma
+              </label>
+              <Select
+                value={classId}
+                onChange={(event) => {
+                  setClassId(event.target.value);
+                  setSendResult(null);
+                }}
+              >
+                <option value="">Selecione uma turma</option>
+                {classGroups.map((classGroup) => (
+                  <option key={classGroup.id} value={classGroup.id}>
+                    {classGroup.topic} — {classGroup.studentIds.length} alunos
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          <div>
+            <label className="mb-2 block text-sm font-semibold text-slate-700">
+              Assunto
+            </label>
+            <Input
+              placeholder="Ex.: Orientações para a próxima atividade"
+              value={subject}
+              onChange={(event) => {
+                setSubject(event.target.value);
+                setSendResult(null);
+              }}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-slate-700">
+            Mensagem
+          </label>
+          <Textarea
+            placeholder="Escreva a mensagem que o aluno receberá por e-mail."
+            value={text}
+            onChange={(event) => {
+              setText(event.target.value);
+              setSendResult(null);
+            }}
+          />
+        </div>
+
+        {sendManualEmail.isError ? (
+          <Alert tone="danger">{normalizeApiError(sendManualEmail.error).message}</Alert>
+        ) : null}
+
+        {sendResult ? (
+          <Alert tone={sendResult.emailsFailed > 0 ? "warning" : "success"}>
+            {sendResult.emailsSent} de {sendResult.totalRecipients} e-mails enviados para{" "}
+            {sendResult.targetLabel}
+            {sendResult.emailsFailed > 0 ? `; ${sendResult.emailsFailed} falharam.` : "."}
+          </Alert>
+        ) : null}
+
+        <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-500">
+            O envio usa o SMTP configurado no backend; sem SMTP, o sistema registra via console
+            em ambiente de desenvolvimento.
+          </p>
+          <Button type="submit" variant="primary" disabled={!canSend}>
+            <Send className="h-4 w-4" />
+            {sendManualEmail.isPending ? "Enviando..." : "Enviar e-mail"}
+          </Button>
+        </div>
+      </form>
 
       <div className="surface p-6">
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">

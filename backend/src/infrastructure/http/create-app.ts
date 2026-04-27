@@ -40,6 +40,7 @@ import { ListEvaluationsByClassUseCase } from "../../application/use-cases/list-
 import { SetEvaluationUseCase } from "../../application/use-cases/set-evaluation-use-case";
 import { UpdateClassGroupUseCase } from "../../application/use-cases/update-class-group-use-case";
 import { SendEvaluationDigestUseCase } from "../../application/use-cases/send-evaluation-digest-use-case";
+import { SendManualEmailUseCase } from "../../application/use-cases/send-manual-email-use-case";
 import { SendExamBatchToClassUseCase } from "../../application/use-cases/send-exam-batch-to-class-use-case";
 import { ListEmailLogsUseCase } from "../../application/use-cases/list-email-logs-use-case";
 import { ILLMProviderService } from "../../application/services/llm-provider-service";
@@ -287,6 +288,13 @@ export const createApp = (dependencies: AppDependencies = {}): Express => {
   const emailDigestController = new EmailDigestController(
     sendEvaluationDigestUseCase,
     new ListEmailLogsUseCase(emailLogRepository),
+    new SendManualEmailUseCase(
+      studentRepository,
+      classGroupRepository,
+      emailLogRepository,
+      emailService,
+      clock
+    ),
     defaultFromAddress
   );
 
